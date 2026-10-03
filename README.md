@@ -85,6 +85,8 @@ bev = lifter(features, cameras)   # features: list of (B, N, C, H_l, W_l), fine 
 | `attention.PillarDeformableAttention` | BEVFormer/TPVFormer `MSDeformableAttention3D` (multi-anchor, into images) |
 | `attention.SpatialCrossAttention` | BEVFormer / TPVFormer image cross-attention |
 | `attention.CrossViewHybridAttention` | TPVFormer cross-view hybrid attention |
+| `lifters.BEVToTPV` | BEV map → `TPVPlanes`, so any BEV lifter can feed `TPVAggregator` (inverse of `HeightCompressor`) |
+| `lifters.PlaneAuxHead` | per-plane classifier; `build_tpvformer(..., aux_heads=True)` + `OccupancyTask(aux_weight=0.5)` supervises each plane |
 
 The ops are checked against explicit loop implementations and with `torch.autograd.gradcheck`.
 

@@ -19,17 +19,26 @@ from lifting.lifters.depth_warp_lifter import DepthWarpLifter
 from lifting.lifters.lift_splat_lifter import LiftSplatLifter
 from lifting.lifters.mlp_view_lifter import MLPViewLifter
 from lifting.lifters.polar_ray_lifter import PolarRayLifter
-from lifting.lifters.tpvformer import TPVAggregator, TPVFormerLifter, TPVPlanes, TPVReferencePoints
+from lifting.lifters.tpvformer import (
+    BEVToTPV,
+    PlaneAuxHead,
+    TPVAggregator,
+    TPVFormerLifter,
+    TPVPlanes,
+    TPVReferencePoints,
+)
 
 __all__ = [
     "LIFTERS",
     "BEVFormerLifter",
+    "BEVToTPV",
     "BaseLifter",
     "BilinearSamplingLifter",
     "DepthHead",
     "DepthWarpLifter",
     "LiftSplatLifter",
     "MLPViewLifter",
+    "PlaneAuxHead",
     "PolarRayLifter",
     "TPVAggregator",
     "TPVFormerLifter",

@@ -9,7 +9,7 @@ from typing import Any
 from lifting.decoders import BEVDecoder, SegmentationHead
 from lifting.encoders import ImageEncoder, SimpleConvEncoder
 from lifting.geometry import DepthBins, GridSpec
-from lifting.lifters import LIFTERS, TPVAggregator, TPVFormerLifter
+from lifting.lifters import LIFTERS, PlaneAuxHead, TPVAggregator, TPVFormerLifter
 from lifting.models.bev_segmentation_model import BEVSegmentationModel
 from lifting.models.tpvformer import TPVFormer
 
@@ -88,11 +88,19 @@ def build_tpvformer(
     channels: int = 64,
     encoder: ImageEncoder | None = None,
     scale: int = 1,
+    aux_heads: bool = False,
     **lifter_kwargs: Any,
 ) -> TPVFormer:
-    """Build a TPVFormer for 3D semantic occupancy."""
+    """Build a TPVFormer for 3D semantic occupancy.
+
+    With ``aux_heads=True`` the model also returns per-plane ``aux_logits``; train them with
+    ``OccupancyTask(num_classes, aux_weight=...)``.
+    """
     grid = grid or GridSpec()
     encoder = encoder or SimpleConvEncoder(out_channels=channels, num_levels=2)
     lifter = TPVFormerLifter(grid, encoder.out_channels, encoder.out_channels, **lifter_kwargs)
     aggregator = TPVAggregator(grid, encoder.out_channels, num_classes, scale=scale)
-    return TPVFormer(encoder, lifter, aggregator)
+    heads = (
+        [PlaneAuxHead(encoder.out_channels, num_classes) for _ in range(3)] if aux_heads else None
+    )
+    return TPVFormer(encoder, lifter, aggregator, heads)
