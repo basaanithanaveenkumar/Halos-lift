@@ -24,7 +24,7 @@ dependencies = [
 
 [project.optional-dependencies]
 vision = ["torchvision>=0.16"]
-dev = ["pytest>=7.4", "ruff>=0.4"]
+dev = ["pytest>=7.4", "ruff>=0.8", "pre-commit>=4.0"]
 
 [project.scripts]
 lifting-verify = "lifting.cli:main"
