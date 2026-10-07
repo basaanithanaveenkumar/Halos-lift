@@ -1,5 +1,16 @@
 # Halos-lift (`lifting`)
 
+<div align="center">
+
+[![GitHub](https://img.shields.io/badge/GitHub-Halos--lift-181717?logo=github&logoColor=white)](https://github.com/basaanithanaveenkumar/Halos-lift)
+[![Project Page](https://img.shields.io/badge/🌐_Project-Page-4A90D9)](https://basaanithanaveenkumar.github.io/Halos-lift/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![MPS / CUDA / CPU](https://img.shields.io/badge/Runs_on-MPS_%7C_CUDA_%7C_CPU-76B900)](https://pytorch.org/)
+
+</div>
+
 **Pure-PyTorch 2D → BEV / 3D lifting for robotics and autonomous driving.**
 
 TPVFormer, BEVFormer, Lift-Splat-Shoot, Simple-BEV, TIIM and friends, rewritten without
