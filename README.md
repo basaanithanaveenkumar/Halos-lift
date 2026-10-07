@@ -11,6 +11,36 @@
 
 </div>
 
+## How it works
+
+A car or robot has several cameras pointing in different directions. Each camera knows its exact position and angle (calibration). A *lifting* algorithm uses that calibration to project the 2D images into a 3D or bird's-eye-view (BEV) feature map — essentially assembling a top-down view of the scene that a planner or occupancy model can reason over.
+
+```mermaid
+flowchart LR
+  subgraph INPUT["What you give it"]
+    C1["📷 Front camera"]
+    C2["📷 Left camera"]
+    C3["📷 Right camera"]
+    C4["📷 Back camera"]
+    CAL["📐 Calibration\n(position + angle of each camera)"]
+  end
+
+  subgraph LIFT["Lifting — any of 7 algorithms"]
+    ENC["Image encoder\n(ResNet + FPN)\nextracts features from each view"]
+    ALG["Lifting algorithm\n(e.g. BEVFormer, Lift-Splat, TPVFormer)\nuses calibration to project features\ninto 3D space"]
+  end
+
+  subgraph OUTPUT["What you get back"]
+    BEV["🗺️ Bird's-eye-view map\nor 3D voxel grid\n(cars · pedestrians · road)"]
+  end
+
+  C1 & C2 & C3 & C4 --> ENC
+  CAL --> ALG
+  ENC --> ALG --> BEV
+```
+
+> **Why not just use one front camera?** A single view misses objects to the side and behind. BEV lifting gives a complete 360° spatial picture a planner can act on.
+
 **Pure-PyTorch 2D → BEV / 3D lifting for robotics and autonomous driving.**
 
 TPVFormer, BEVFormer, Lift-Splat-Shoot, Simple-BEV, TIIM and friends, rewritten without
