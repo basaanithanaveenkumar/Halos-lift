@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halos-lift</title>
+<meta name="description" content="Pure-PyTorch 2D→BEV/3D camera lifting: LSS, BEVFormer, SimpleBEV, TIIM, TPVFormer — no mmcv, no CUDA kernels, runs on CPU/CUDA/MPS.">
+<meta property="og:title" content="Halos-lift: Geometric Camera Lifting for Robotics and Autonomous Driving">
+<meta property="og:description" content="Seven lifting architectures sharing one interface, verified to learn from camera geometry on procedurally rendered 3D scenes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1d1f;--muted:#5b5b63;--card:#ffffff;--line:#e4e2dc;--accent:#2f5bd3;--accent-soft:#e8eefc;--code:#f3f2ee;--chip:#efeee9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111214;--fg:#ececee;--muted:#a0a0aa;--card:#1a1b1f;--line:#2c2d33;--accent:#8aa8ff;--accent-soft:#1e2640;--code:#1f2025;--chip:#24252b}}
+:root[data-theme="dark"]{--bg:#111214;--fg:#ececee;--muted:#a0a0aa;--card:#1a1b1f;--line:#2c2d33;--accent:#8aa8ff;--accent-soft:#1e2640;--code:#1f2025;--chip:#24252b}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 "Source Serif 4",Georgia,serif}
+.wrap{max-width:920px;margin:0 auto;padding:0 16px}
+header.hero{padding:64px 0 28px;text-align:center}
+.kicker{font:600 13px/1 Inter,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+h1{font:700 clamp(30px,5.4vw,48px)/1.15 Inter,system-ui,sans-serif;margin:14px 0 10px;letter-spacing:-.02em}
+.subtitle{font-size:clamp(17px,2.4vw,21px);color:var(--muted);max-width:720px;margin:0 auto}
+.authors{margin:20px 0 4px;font:500 16px Inter,system-ui,sans-serif}
+.affil{color:var(--muted);font:14px Inter,system-ui,sans-serif}
+.buttons{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:26px 0 8px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;background:var(--fg);color:var(--bg);text-decoration:none;font:600 14px Inter,system-ui,sans-serif}
+.btn.alt{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn:hover{opacity:.88}
+section{padding:26px 0;border-top:1px solid var(--line)}
+h2{font:700 24px/1.3 Inter,system-ui,sans-serif;margin:0 0 14px;letter-spacing:-.01em}
+h3{font:650 17px/1.35 Inter,system-ui,sans-serif;margin:0 0 6px}
+p{margin:0 0 12px}
+.tldr{background:var(--accent-soft);border-radius:14px;padding:18px 20px;font-size:18px}
+.tldr b{font-family:Inter,system-ui,sans-serif}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.card p{font-size:15.5px;color:var(--muted);margin:0}
+figure{margin:0 0 18px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;overflow-x:auto}
+figcaption{font:14px/1.5 Inter,system-ui,sans-serif;color:var(--muted);margin-top:10px}
+.mermaid{display:flex;justify-content:center;min-width:0}
+.mermaid svg{max-width:100%;height:auto}
+pre{background:var(--code);border:1px solid var(--line);border-radius:12px;padding:14px 16px;overflow-x:auto;font:13.5px/1.55 "JetBrains Mono",ui-monospace,monospace;margin:0 0 12px}
+code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.9em}
+table{width:100%;border-collapse:collapse;font:15px/1.5 Inter,system-ui,sans-serif}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600}
+td code{background:var(--chip);padding:1px 6px;border-radius:6px}
+.tablewrap{overflow-x:auto}
+.note{font:14px/1.55 Inter,system-ui,sans-serif;color:var(--muted)}
+footer{padding:32px 0 48px;color:var(--muted);font:14px Inter,system-ui,sans-serif;text-align:center;border-top:1px solid var(--line)}
+a{color:var(--accent)}
+.theme{position:fixed;top:12px;right:12px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;padding:6px 12px;font:13px Inter,system-ui,sans-serif;cursor:pointer}
+</style>
+</head>
+<body>
+<button class="theme" id="theme" aria-label="Toggle dark mode">Theme</button>
+<div class="wrap">
+<header class="hero">
+  <div class="kicker">BEV lifting · 3D occupancy · Autonomous driving · Robotics</div>
+  <h1>Halos-lift: Geometric Camera Lifting for Robotics and Autonomous Driving</h1>
+  <p class="subtitle">Seven lifting architectures — LSS, BEVFormer, SimpleBEV, TIIM, TPVFormer and more — rewritten in pure PyTorch, sharing one interface, verified to actually use camera geometry.</p>
+  <div class="authors">B A NaveenKumar</div>
+  <div class="affil">Independent research · 2026</div>
+  <div class="buttons">
+    <a class="btn" href="https://github.com/basaanithanaveenkumar/Halos-lift">Code</a>
+    <a class="btn alt" href="https://github.com/basaanithanaveenkumar/Halos-lift/tree/main/docs">Docs</a>
+    <a class="btn alt" href="https://pypi.org/project/halos-lift/">PyPI</a>
+  </div>
+</header>
+
+<section>
+<div class="tldr"><b>TL;DR.</b> <code>build_bev_model("bevformer", grid, num_classes=6)</code> — swap any of 7 lifters into one <code>BEVSegmentationModel</code>. A built-in verifier checks that the lifter fails when camera extrinsics are rotated 90°, proving it uses geometry and not shortcuts.</div>
+</section>
+
+<section>
+<h2>Abstract</h2>
+<p>Transforming multi-camera images into a bird's-eye-view (BEV) or 3D voxel representation is a prerequisite for structured perception in autonomous driving and robot navigation. Published implementations of the leading methods — Lift-Splat-Shoot, BEVFormer, TPVFormer — rely on compiled CUDA kernels and heavy mm-family dependencies, making them hard to run, modify, or port to new hardware.</p>
+<p>Halos-lift re-implements seven lifting architectures in pure PyTorch using only <code>F.grid_sample</code>, <code>F.interpolate</code> and batched attention, with no custom ops, no mmcv, and no mmdet3d. All lifters share a <code>BaseLifter.forward(features, cameras) → (B, C, X, Y)</code> interface and can be swapped into the same <code>BEVSegmentationModel</code> or <code>TPVFormer</code> pipeline. A built-in geometric verifier trains each lifter end-to-end on procedurally rendered synthetic scenes with random camera rigs, then checks three conditions: it must beat a geometry-free baseline, its mIoU must collapse when the rig is rotated 90°, and its loss must decrease. All seven pass.</p>
+</section>
+
+<section>
+<h2>Highlights</h2>
+<div class="grid">
+  <div class="card"><h3>Zero compiled ops</h3><p>Deformable attention, voxel pooling, LSS frustum splatting — all via <code>F.grid_sample</code> and batched matrix ops. Runs on CPU, CUDA and Apple Silicon MPS.</p></div>
+  <div class="card"><h3>One interface, seven lifters</h3><p><code>LIFTERS.build("lift_splat", grid, in_channels, out_channels)</code> — swap any lifter into any model without touching training or evaluation code.</p></div>
+  <div class="card"><h3>TPVFormer support</h3><p>Three orthogonal planes (xy, xz, yz), cross-view hybrid attention, per-plane image cross-attention, auxiliary per-plane heads, 3D occupancy and point-cloud queries.</p></div>
+  <div class="card"><h3>Geometry verifier</h3><p>Trains every lifter on synthetic scenes, then rotates the camera extrinsics 90° — a geometric lifter must fail. Outputs a GIF and a JSON report.</p></div>
+  <div class="card"><h3>Analytic tests</h3><p>Pixel-ramp and depth-ramp probes verify lifting is exact. Equivariance test checks rig rotation → volume rotation. All ops checked with <code>gradcheck</code>.</p></div>
+  <div class="card"><h3>Training stages</h3><p>Three-phase configs: synthetic pretrain → nuScenes / Waymo mid-train → Occ3D / BEV-seg post-train, all in <code>configs/</code> with <code>inherits:</code> YAML.</p></div>
+</div>
+</section>
+
+<section>
+<h2>Architecture</h2>
+<figure><div class="mermaid">flowchart TB
+  IMG["N camera images\n[B, N, 3, H, W]"] --> ENC["ImageEncoder\nResNet-50 / EfficientNet + FPN\n[B, N, C_l, H_l, W_l] per scale"]
+  CAM["Cameras\nintrinsics [B,N,3,3]\ncam_to_ego [B,N,4,4]"] --> LIFT
+  ENC --> LIFT{"LIFTERS.build(name, grid)"}
+  LIFT -->|"simple_bev\ndepth_warp"| BL["project voxel centres\nbilinear-sample\ncompress height"]
+  LIFT -->|"lift_splat"| LS["depth distribution × context\nvoxel pooling (QuickCumsum)"]
+  LIFT -->|"bevformer"| BF["BEV queries\ndeformable self-attn\nspatial cross-attn"]
+  LIFT -->|"tiim"| TI["column transformer\npolar rays → Cartesian"]
+  LIFT -->|"tpvformer"| TPV["3 planes\ncross-view hybrid attn\nimage cross-attn"]
+  BL & LS & BF & TI & TPV --> BEV["BEV feature map\n[B, C, X, Y]"]
+  BEV --> DEC["BEVDecoder\nSegmentationHead\n[B, n_classes, X, Y]"]</div>
+<figcaption><b>Figure 1.</b> Shared pipeline: any lifter maps N-camera features + calibration to a BEV feature map consumed by the same decoder.</figcaption>
+</figure>
+
+<figure><div class="mermaid">flowchart LR
+  subgraph TPVFormer
+    XY["xy plane\n[B, C, X, Y]"] -->|"cross-view attn"| XZ["xz plane\n[B, C, X, Z]"]
+    XZ -->|"cross-view attn"| YZ["yz plane\n[B, C, Y, Z]"]
+    YZ -->|"cross-view attn"| XY
+    XY & XZ & YZ -->|"spatial cross-attn\n(image features)"| FEAT["multi-scale image features"]
+  end
+  XY & XZ & YZ --> AGG["TPVAggregator\nvoxel grid [B, C, X, Y, Z]"]
+  AGG --> OCC["OccHead → [B, n_cls, X, Y, Z]"]
+  AGG --> PTS["PointHead → [B, n_cls, P]"]</div>
+<figcaption><b>Figure 2.</b> TPVFormer: three orthogonal planes with cross-view hybrid attention, producing both voxel occupancy and per-point predictions.</figcaption>
+</figure>
+
+<figure><div class="mermaid">flowchart LR
+  subgraph "Geometric Verifier"
+    SYN["SyntheticSceneDataset\nrandom rig rotation per scene"] --> TRAIN["train lifter\nBEV seg 300 steps"]
+    TRAIN --> CHECK{"3 checks"}
+    CHECK -->|"beats_baseline\nmIoU > mlp_view + 0.15"| P1["✅"]
+    CHECK -->|"uses_geometry\nrotate rig 90° → mIoU drops ≥50%"| P2["✅"]
+    CHECK -->|"loss_decreases\nsmoothed loss falls ≥30%"| P3["✅"]
+    P1 & P2 & P3 --> GIF["verification.gif + report.json"]
+  end</div>
+<figcaption><b>Figure 3.</b> The verifier proves each lifter actually uses camera geometry — not pixel shortcuts.</figcaption>
+</figure>
+</section>
+
+<section>
+<h2>Lifter comparison</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Lifter</th><th>How it lifts</th><th>mIoU ↑</th><th>mIoU (rotated rig) ↓</th><th>CPU time</th></tr></thead>
+<tbody>
+<tr><td><code>mlp_view</code> (control)</td><td>geometry-free MLP</td><td>0.000</td><td>0.000</td><td>13 s</td></tr>
+<tr><td><code>simple_bev</code></td><td>bilinear-sample + height compress</td><td>0.510</td><td>0.016</td><td>12 s</td></tr>
+<tr><td><code>depth_warp</code></td><td>depth-weighted frustum, trilinear pull</td><td>0.493</td><td>0.016</td><td>16 s</td></tr>
+<tr><td><code>lift_splat</code></td><td>depth distribution × context, voxel pool</td><td>0.456</td><td>0.015</td><td>16 s</td></tr>
+<tr><td><code>tiim</code></td><td>column transformer → polar rays</td><td>0.404</td><td>0.017</td><td>16 s</td></tr>
+<tr><td><code>bevformer</code></td><td>BEV queries + deformable cross-attn</td><td>0.528</td><td>0.016</td><td>28 s</td></tr>
+<tr><td><code>tpvformer</code> (BEV)</td><td>3 planes, cross-view hybrid attn</td><td>0.522</td><td>0.016</td><td>39 s</td></tr>
+<tr><td><code>tpvformer</code> (3D occ)</td><td>voxel grid from 3 planes</td><td>0.418</td><td>0.016</td><td>40 s</td></tr>
+</tbody>
+</table></div>
+<p class="note">300-step verification run, 32×32×4 grid, 4 cameras at 48×96, laptop CPU. mIoU is mean over foreground classes (vehicle, pedestrian).</p>
+</section>
+
+<section>
+<h2>Training stages</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Phase</th><th>Config</th><th>Data</th><th>Goal</th></tr></thead>
+<tbody>
+<tr><td>Pretrain</td><td><code>configs/pretrain_lift.yaml</code></td><td>Synthetic (500K scenes)</td><td>Learn camera geometry, depth supervision</td></tr>
+<tr><td>Mid-train</td><td><code>configs/mid_train_nuscenes.yaml</code></td><td>nuScenes v1.0-trainval (6 cams)</td><td>Adapt to real sensor noise and occlusion</td></tr>
+<tr><td>Mid-train</td><td><code>configs/mid_train_waymo.yaml</code></td><td>Waymo Open (5 cams, proxy-safe)</td><td>Broader scene diversity</td></tr>
+<tr><td>Post-train</td><td><code>configs/post_train_occ3d.yaml</code></td><td>nuScenes + Occ3D labels</td><td>3D semantic occupancy (17 classes)</td></tr>
+<tr><td>Post-train</td><td><code>configs/post_train_map_seg.yaml</code></td><td>nuScenes map</td><td>BEV map segmentation (6 classes)</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section>
+<h2>Quick start</h2>
+<pre><code>pip install "git+https://github.com/basaanithanaveenkumar/Halos-lift"
+# or: uv add "halos-lift @ git+https://github.com/basaanithanaveenkumar/Halos-lift"</code></pre>
+<pre><code>import torch
+from lifting import GridSpec, Cameras, build_bev_model
+
+grid = GridSpec(x_bounds=(-50, 50), y_bounds=(-50, 50),
+                z_bounds=(-2, 2), resolution=(200, 200, 4))
+
+# BEV semantic segmentation — swap any lifter name
+model = build_bev_model("bevformer", grid, num_classes=6, image_size=(224, 400), num_cameras=6)
+logits = model(images, cameras)["logits"]   # (B, 6, 200, 200)</code></pre>
+<pre><code># Use any lifter standalone with your own encoder
+from lifting import LIFTERS
+lifter = LIFTERS.build("lift_splat", grid=grid, in_channels=128, out_channels=128)
+bev = lifter(features, cameras)             # features: list of (B, N, C, H_l, W_l)</code></pre>
+<pre><code># Run the geometric verifier (~5 min, laptop CPU)
+lifting-verify --gif verification.gif --json report.json</code></pre>
+</section>
+
+<section>
+<h2>Citation</h2>
+<pre><code>@misc{naveenkumar2026haloslift,
+  title  = {Halos-lift: Geometric Camera Lifting for Robotics and Autonomous Driving
+            in Pure PyTorch},
+  author = {NaveenKumar, B A},
+  year   = {2026},
+  url    = {https://github.com/basaanithanaveenkumar/Halos-lift}
+}</code></pre>
+</section>
+</div>
+<footer>Halos-lift · <a href="https://github.com/basaanithanaveenkumar/Halos-lift">Source on GitHub</a> · MIT License</footer>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+const root = document.documentElement;
+const saved = (() => { try { return localStorage.getItem('theme'); } catch (e) { return null; } })();
+if (saved) root.dataset.theme = saved;
+const isDark = () => root.dataset.theme ? root.dataset.theme === 'dark'
+  : matchMedia('(prefers-color-scheme: dark)').matches;
+const sources = [...document.querySelectorAll('.mermaid')].map(el => el.textContent);
+async function render() {
+  mermaid.initialize({ startOnLoad: false, theme: isDark() ? 'dark' : 'neutral', securityLevel: 'strict',
+    flowchart: { curve: 'basis', htmlLabels: true } });
+  const els = document.querySelectorAll('.mermaid');
+  els.forEach((el, i) => { el.removeAttribute('data-processed'); el.textContent = sources[i]; });
+  await mermaid.run({ nodes: els });
+}
+document.getElementById('theme').addEventListener('click', () => {
+  root.dataset.theme = isDark() ? 'light' : 'dark';
+  try { localStorage.setItem('theme', root.dataset.theme); } catch (e) {}
+  render();
+});
+render();
+</script>
+</body>
+</html>
