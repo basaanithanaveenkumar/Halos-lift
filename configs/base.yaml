@@ -1,0 +1,165 @@
+# ============================================================
+# Halos-lift  —  Base configuration
+# 2D → 3D / BEV camera lifting (Lift-Splat-Shoot, BEVFormer,
+# SimpleBEV, TIIM) with multi-scale deformable attention.
+# ============================================================
+
+variant: lss_lift
+
+# ------------------------------------------------------------------
+# Model
+# ------------------------------------------------------------------
+model:
+  architecture: lss             # lss | bevformer | simple_bev | tiim | tpvformer
+
+  # Camera geometry
+  n_cameras: 6
+  img_size: [224, 400]          # [H, W]
+  in_chans: 3
+
+  # Image backbone
+  backbone: efficientnet_b0     # efficientnet_b0 | resnet50 | swin_t
+  backbone_pretrained: true
+  backbone_freeze: false
+  fpn_levels: [2, 3, 4]
+
+  # BEV grid
+  x_bounds: [-50.0, 50.0]      # metres
+  y_bounds: [-50.0, 50.0]
+  z_bounds: [-2.0, 2.0]
+  bev_resolution: [200, 200]    # [H, W] pixels
+  z_resolution: 4               # depth bins
+
+  # Lift-Splat-Shoot specific
+  lss:
+    depth_min: 2.0
+    depth_max: 60.0
+    n_depth_bins: 128
+    depthnet_channels: 512
+
+  # BEVFormer specific
+  bevformer:
+    embed_dims: 256
+    num_heads: 8
+    num_encoder_layers: 6
+    feedforward_channels: 512
+    num_points: 4
+    deformable_attention_type: multi_scale  # multi_scale | single_scale
+    bev_h: 200
+    bev_w: 200
+    dropout: 0.1
+
+  # SimpleBEV specific
+  simple_bev:
+    feat_dim: 128
+    num_scales: 4
+
+  # TIIM specific
+  tiim:
+    embed_dim: 256
+    num_iter: 3
+
+  # BEV output head
+  bev_channels: 64
+  output_channels: 6            # BEV segmentation classes
+
+  # Output heads
+  heads:
+    bev_seg:
+      enabled: true
+      n_classes: 6
+    occ_3d:
+      enabled: false
+      n_classes: 17
+      voxel_shape: [200, 200, 16]
+    depth_supervision:
+      enabled: false
+
+# ------------------------------------------------------------------
+# Training
+# ------------------------------------------------------------------
+train:
+  epochs: 20
+  batch_size: 4
+  lr: 2.5e-4
+  warmup_epochs: 2
+  lr_scheduler: cosine          # cosine | step | onecycle
+  weight_decay: 1.0e-7
+  grad_clip: 5.0
+  grad_accum_steps: 1
+  dtype: float32
+  resume: false
+  checkpoint_dir: data/checkpoints
+  checkpoint_every_n_epochs: 2
+  keep_last_n_checkpoints: 3
+  seed: 42
+  loss:
+    bev_seg_weight: 1.0
+    occ_weight: 1.0
+    depth_weight: 0.1
+
+# ------------------------------------------------------------------
+# Data
+# ------------------------------------------------------------------
+data:
+  source: synthetic             # synthetic | nuscenes | waymo | argoverse2
+  stage: pretrain               # pretrain | mid_train | post_train
+  synthetic:
+    length: 100000
+    n_cameras: 6
+    grid_x_size: 50.0
+    grid_y_size: 50.0
+    grid_z_bins: 4
+    seed: 0
+  nuscenes:
+    data_root: null
+    version: v1.0-trainval
+    map_classes:
+      - drivable_surface
+      - ped_crossing
+      - walkway
+      - stop_line
+      - carpark_area
+      - divider
+  waymo:
+    data_root: null
+  train_split: train
+  val_split: val
+  img_size: [224, 400]
+  num_workers: 4
+
+# ------------------------------------------------------------------
+# Logging
+# ------------------------------------------------------------------
+logging:
+  backend: tensorboard
+  tensorboard: false
+  log_every_n_steps: 50
+
+# ------------------------------------------------------------------
+# Experiment
+# ------------------------------------------------------------------
+experiment:
+  enabled: true
+  root: data/experiments
+
+# ------------------------------------------------------------------
+# Evaluation
+# ------------------------------------------------------------------
+eval:
+  enabled: true
+  every_n_epochs: 2
+  metrics:
+    - miou_bev
+  visualise_pred: false
+
+# ------------------------------------------------------------------
+# Deployment
+# ------------------------------------------------------------------
+deploy:
+  enabled: false
+  backend: pytorch              # pytorch | onnx | torchscript
+  device: cpu
+  dtype: float32
+  compile: false
+  export_path: data/exports

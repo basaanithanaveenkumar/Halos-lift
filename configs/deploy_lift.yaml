@@ -1,0 +1,36 @@
+# ============================================================
+# Halos-lift  —  Deployment: ONNX / TorchScript export
+# ============================================================
+# Exports the BEV lifting model for downstream use in robot
+# perception stacks, autonomous driving pipelines, or ROS2 nodes.
+# ============================================================
+
+inherits: base.yaml
+
+deploy:
+  enabled: true
+  backend: onnx                 # onnx | torchscript | pytorch
+  device: cpu
+  dtype: float32
+  compile: false
+  export_path: data/exports
+  onnx:
+    opset_version: 17
+    dynamic_axes:
+      images: [0, 1]            # batch and camera dims dynamic
+      intrinsics: [0, 1]
+    simplify: true
+    verify_outputs: true
+    atol: 1.0e-3
+
+model:
+  heads:
+    bev_seg:
+      enabled: true
+    occ_3d:
+      enabled: false
+    depth_supervision:
+      enabled: false
+
+train:
+  steps: 0

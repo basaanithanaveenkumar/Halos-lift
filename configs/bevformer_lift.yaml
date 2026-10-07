@@ -1,0 +1,30 @@
+# ============================================================
+# Halos-lift  —  Model variant: BEVFormer
+# ============================================================
+# Temporal cross-attention: BEV queries attend to image features
+# + recurrent BEV memory from the previous timestep.
+# Best for tasks requiring temporal aggregation (moving objects).
+# ============================================================
+
+inherits: base.yaml
+variant: bevformer_lift
+
+model:
+  architecture: bevformer
+  bevformer:
+    embed_dims: 256
+    num_heads: 8
+    num_encoder_layers: 6
+    feedforward_channels: 512
+    num_points: 4
+    deformable_attention_type: multi_scale
+    bev_h: 200
+    bev_w: 200
+    dropout: 0.1
+  backbone: resnet101
+  backbone_pretrained: true
+
+train:
+  batch_size: 2
+  lr: 2.0e-4
+  grad_accum_steps: 4

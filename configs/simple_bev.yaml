@@ -1,0 +1,28 @@
+# ============================================================
+# Halos-lift  —  Model variant: SimpleBEV
+# ============================================================
+# Pixel-aligned BEV lifting without transformers:
+# voxel-unproject → sum-pool → BEV feature map.
+# Fastest architecture, best for edge/robot deployment.
+# ============================================================
+
+inherits: base.yaml
+variant: simple_bev
+
+model:
+  architecture: simple_bev
+  simple_bev:
+    feat_dim: 128
+    num_scales: 4
+  backbone: efficientnet_b0
+  backbone_pretrained: true
+
+train:
+  batch_size: 8
+  lr: 3.0e-4
+
+deploy:
+  enabled: false
+  backend: onnx
+  dtype: float32
+  compile: false

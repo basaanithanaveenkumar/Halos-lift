@@ -1,0 +1,56 @@
+# ============================================================
+# Halos-lift  —  Phase 3: Post-training on Occ3D occupancy
+# ============================================================
+# Fine-tunes the BEV lifting model for 3D semantic occupancy.
+# Adds a 200×200×16 voxel prediction head to the BEV backbone.
+#
+# Requires: nuScenes + Occ3D annotation labels
+# Paper: Tian et al. (2023) https://arxiv.org/abs/2304.14365
+# ============================================================
+
+inherits: base.yaml
+
+data:
+  source: nuscenes
+  stage: post_train
+  nuscenes:
+    data_root: null             # REQUIRED
+    version: v1.0-trainval
+    occ_root: null              # REQUIRED: /path/to/occ3d/labels
+    occ_classes: 17
+  img_size: [448, 800]
+  num_workers: 4
+
+train:
+  epochs: 12
+  batch_size: 2
+  lr: 1.0e-4
+  warmup_epochs: 1
+  lr_scheduler: cosine
+  grad_clip: 5.0
+  grad_accum_steps: 4
+  checkpoint_every_n_epochs: 2
+  loss:
+    bev_seg_weight: 0.5
+    occ_weight: 2.0
+    depth_weight: 0.0
+
+model:
+  heads:
+    bev_seg:
+      enabled: true
+      n_classes: 6
+    occ_3d:
+      enabled: true
+      n_classes: 17
+      voxel_shape: [200, 200, 16]
+    depth_supervision:
+      enabled: false
+
+eval:
+  enabled: true
+  every_n_epochs: 2
+  metrics:
+    - miou_bev
+    - miou_occ
+  visualise_pred: true

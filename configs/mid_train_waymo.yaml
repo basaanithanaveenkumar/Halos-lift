@@ -1,0 +1,42 @@
+# ============================================================
+# Halos-lift  —  Phase 2: Mid-training on Waymo Open Dataset
+# ============================================================
+# Proxy mode when waymo.data_root is null (no download needed).
+# Waymo uses 5 cameras and a 144×144 BEV grid.
+# ============================================================
+
+inherits: base.yaml
+
+data:
+  source: waymo
+  stage: mid_train
+  waymo:
+    data_root: null             # null → synthetic proxy
+    split: training
+  img_size: [640, 960]
+  num_workers: 4
+
+train:
+  epochs: 20
+  batch_size: 2
+  lr: 1.5e-4
+  grad_clip: 5.0
+  grad_accum_steps: 4
+
+model:
+  n_cameras: 5
+  x_bounds: [-72.0, 72.0]
+  y_bounds: [-72.0, 72.0]
+  bev_resolution: [144, 144]
+  heads:
+    bev_seg:
+      enabled: true
+      n_classes: 6
+    depth_supervision:
+      enabled: true
+
+eval:
+  enabled: true
+  every_n_epochs: 4
+  metrics:
+    - miou_bev

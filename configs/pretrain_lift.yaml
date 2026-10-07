@@ -1,0 +1,53 @@
+# ============================================================
+# Halos-lift  —  Phase 1: Pre-training on synthetic scenes
+# ============================================================
+# Trains the lifting model on infinite procedurally-generated
+# multi-camera 3D scenes. No external data required.
+# Goal: learn camera projection geometry and feature lifting.
+# ============================================================
+
+inherits: base.yaml
+
+data:
+  source: synthetic
+  stage: pretrain
+  synthetic:
+    length: 500000
+    n_cameras: 6
+    grid_x_size: 50.0
+    grid_y_size: 50.0
+    grid_z_bins: 4
+    seed: 0
+  num_workers: 4
+
+train:
+  epochs: 12
+  batch_size: 16
+  lr: 2.5e-4
+  warmup_epochs: 1
+  lr_scheduler: cosine
+  grad_clip: 5.0
+  checkpoint_every_n_epochs: 2
+  loss:
+    bev_seg_weight: 1.0
+    depth_weight: 1.0           # depth supervision from synthetic GT
+
+model:
+  backbone_freeze: false
+  heads:
+    bev_seg:
+      enabled: true
+      n_classes: 6
+    depth_supervision:
+      enabled: true
+
+logging:
+  backend: tensorboard
+  tensorboard: true
+  log_every_n_steps: 100
+
+eval:
+  enabled: true
+  every_n_epochs: 2
+  metrics:
+    - miou_bev

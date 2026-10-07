@@ -1,0 +1,56 @@
+# ============================================================
+# Halos-lift  —  Phase 3: Post-training on BEV map segmentation
+# ============================================================
+# Fine-tunes for 2D BEV semantic map prediction:
+# 6 static map classes (road, sidewalk, building, vegetation,
+# traffic cone, pedestrian crossing).
+#
+# Requires: nuScenes v1.0-trainval
+# ============================================================
+
+inherits: base.yaml
+
+data:
+  source: nuscenes
+  stage: post_train
+  nuscenes:
+    data_root: null             # REQUIRED
+    version: v1.0-trainval
+    map_classes:
+      - drivable_surface
+      - ped_crossing
+      - walkway
+      - stop_line
+      - carpark_area
+      - divider
+  img_size: [448, 800]
+  num_workers: 4
+
+train:
+  epochs: 30
+  batch_size: 4
+  lr: 2.0e-4
+  warmup_epochs: 3
+  lr_scheduler: cosine
+  grad_clip: 5.0
+  loss:
+    bev_seg_weight: 1.0
+    occ_weight: 0.0
+    depth_weight: 0.0
+
+model:
+  heads:
+    bev_seg:
+      enabled: true
+      n_classes: 6
+    occ_3d:
+      enabled: false
+    depth_supervision:
+      enabled: false
+
+eval:
+  enabled: true
+  every_n_epochs: 4
+  metrics:
+    - miou_bev
+  visualise_pred: true
