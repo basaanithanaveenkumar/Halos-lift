@@ -9,8 +9,14 @@
 | ``tiim``      | PolarRayLifter           | tiimnet.py                          |
 | ``tpvformer`` | TPVFormerLifter          | wzzheng/TPVFormer                   |
 | ``mlp_view``  | MLPViewLifter            | geometry-free baseline (VPN)        |
+| ``alpamayo``  | AlpamayoTriplaneLifter   | Ivanovic et al. arXiv:2506.12251    |
 """
 
+from lifting.lifters.alpamayo import (
+    AlpamayoReferencePoints,
+    AlpamayoTriplaneLifter,
+    MipNeRF360Parametrizer,
+)
 from lifting.lifters.base import LIFTERS, BaseLifter
 from lifting.lifters.bevformer import BEVFormerLifter
 from lifting.lifters.bilinear_sampling_lifter import BilinearSamplingLifter
@@ -30,6 +36,8 @@ from lifting.lifters.tpvformer import (
 
 __all__ = [
     "LIFTERS",
+    "AlpamayoReferencePoints",
+    "AlpamayoTriplaneLifter",
     "BEVFormerLifter",
     "BEVToTPV",
     "BaseLifter",
@@ -37,6 +45,7 @@ __all__ = [
     "DepthHead",
     "DepthWarpLifter",
     "LiftSplatLifter",
+    "MipNeRF360Parametrizer",
     "MLPViewLifter",
     "PlaneAuxHead",
     "PolarRayLifter",
