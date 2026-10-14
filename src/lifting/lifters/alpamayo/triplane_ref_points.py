@@ -35,15 +35,21 @@ class AlpamayoReferencePoints:
         self.grid = grid
         self.num_anchors = num_anchors
         self.inner_frac = inner_frac
-        # One parametrizer per spatial axis (x, y, z)
+        # One parametrizer per spatial axis (x, y, z). ``center_m`` keeps the cells inside the
+        # grid bounds for axes that are not symmetric about 0 (the default z range is [-1, 3]).
         self._params = [
             MipNeRF360Parametrizer(
                 total=grid.resolution[i],
                 inner_frac=inner_frac,
                 total_extent_m=float(grid.bounds[i][1] - grid.bounds[i][0]),
+                center_m=float(grid.bounds[i][0] + grid.bounds[i][1]) / 2.0,
             )
             for i in range(3)
         ]
+
+    def parametrizer(self, axis: int) -> MipNeRF360Parametrizer:
+        """The non-linear parametrizer of ``axis`` (0 = x, 1 = y, 2 = z)."""
+        return self._params[axis]
 
     @property
     def plane_shapes(self) -> list[tuple[int, int]]:

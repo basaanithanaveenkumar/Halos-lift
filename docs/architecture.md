@@ -203,3 +203,111 @@ flowchart LR
   end
   PRETRAIN_S -->|"inherits:"| MIDTRAIN_S -->|"inherits:"| POSTTRAIN_S
 ```
+
+---
+
+## 8. Triplane (TPV) lifting for every technique
+
+`lifting.triplane` gives every lifter a triplane counterpart without editing the existing lifters: a separate
+`TRIPLANE_LIFTERS` registry whose classes wrap the unchanged BEV lifters (composition) and add only the parts needed
+to keep height (`VoxelToTriplane` for voxel-based lifters, `PlaneQueryEncoder` / `PlaneProjection` for query-based
+ones, `BEVToTPV` for the generic adapter). Per-technique explanations, detailed diagrams, animations and results are in
+[`triplane.md`](triplane.md).
+
+```mermaid
+flowchart TB
+  subgraph EXIST["lifting.lifters · LIFTERS registry (existing, unchanged)"]
+    direction LR
+    L1[simple_bev]:::reused
+    L2[depth_warp]:::reused
+    L3[lift_splat]:::reused
+    L4[tiim]:::reused
+    L5[bevformer]:::reused
+    L6[tpvformer]:::reused
+    L7[alpamayo]:::reused
+    L8[mlp_view]:::reused
+  end
+  subgraph NEW["lifting.triplane · TRIPLANE_LIFTERS registry (new)"]
+    direction LR
+    T1["SimpleBEVTriplaneLifter"]:::learned
+    T2["DepthWarpTriplaneLifter"]:::learned
+    T3["LiftSplatTriplaneLifter"]:::learned
+    T4["PolarRayTriplaneLifter"]:::learned
+    T5["BEVFormerTriplaneLifter"]:::learned
+    T6["TPVFormerTriplaneLifter"]:::learned
+    T7["AlpamayoTriplaneAdapter"]:::learned
+    T8["MLPViewTriplaneLifter"]:::learned
+    T9["BEVLifterTriplaneAdapter"]:::learned
+  end
+  L1 -. "core (composition)" .-> T1
+  L2 -. core .-> T2
+  L3 -. core .-> T3
+  L4 -. core .-> T4
+  L6 -. core .-> T6
+  L7 -. core .-> T7
+  EXIST -. "any entry" .-> T9
+  BASE["BaseTriplaneLifter(BaseLifter)<br/>lift_planes() → TPVPlanes<br/>forward() → BEV from planes"]:::geo
+  NEW --> BASE
+  BASE --> OCC["build_triplane_model → TriplaneOccupancyModel<br/>3D occupancy + point queries"]:::out
+  BASE --> BEVM["build_triplane_bev_model → BEVSegmentationModel<br/>BEV segmentation, existing trainer / verifier"]:::out
+
+  classDef data fill:#fff7e6,stroke:#d48806,color:#222
+  classDef geo fill:#eaf2fb,stroke:#1f77b4,color:#222
+  classDef learned fill:#f1e6f8,stroke:#8e44ad,color:#222
+  classDef reused fill:#eaf7ea,stroke:#2e8b57,color:#222
+  classDef out fill:#fdecea,stroke:#c0392b,color:#222
+```
+
+```mermaid
+classDiagram
+  direction LR
+  class BaseLifter {
+    <<existing ABC>>
+    +grid: GridSpec
+    +uses_geometry: bool
+    +forward(features, cameras) Tensor BEV
+  }
+  class BaseTriplaneLifter {
+    <<new ABC>>
+    +bev_head: TriplaneBEVHead
+    +lift_planes(features, cameras)* TPVPlanes
+    +forward(features, cameras) Tensor BEV
+    +resolve_kwargs(kwargs, context) dict
+  }
+  class VoxelToTriplane {
+    +forward(voxels) TPVPlanes
+  }
+  class PlaneQueryEncoder {
+    +forward(values, shapes, ref, visible) Tensor
+  }
+  class PlaneProjection {
+    +forward(planes) TPVPlanes
+  }
+  class TriplaneBEVHead {
+    +forward(planes) Tensor
+  }
+  class TriplaneOccupancyModel {
+    +forward(images, cameras, points) dict
+  }
+  BaseLifter <|-- BaseTriplaneLifter
+  BaseTriplaneLifter <|-- SimpleBEVTriplaneLifter
+  BaseTriplaneLifter <|-- DepthWarpTriplaneLifter
+  BaseTriplaneLifter <|-- LiftSplatTriplaneLifter
+  BaseTriplaneLifter <|-- PolarRayTriplaneLifter
+  BaseTriplaneLifter <|-- BEVFormerTriplaneLifter
+  BaseTriplaneLifter <|-- TPVFormerTriplaneLifter
+  BaseTriplaneLifter <|-- AlpamayoTriplaneAdapter
+  BaseTriplaneLifter <|-- MLPViewTriplaneLifter
+  BaseTriplaneLifter <|-- BEVLifterTriplaneAdapter
+  BaseTriplaneLifter *-- TriplaneBEVHead
+  SimpleBEVTriplaneLifter *-- VoxelToTriplane
+  DepthWarpTriplaneLifter *-- VoxelToTriplane
+  LiftSplatTriplaneLifter *-- VoxelToTriplane
+  PolarRayTriplaneLifter *-- VoxelToTriplane
+  BEVFormerTriplaneLifter *-- PlaneQueryEncoder
+  BEVFormerTriplaneLifter *-- PlaneProjection
+  TPVFormerTriplaneLifter *-- PlaneProjection
+  AlpamayoTriplaneAdapter *-- PlaneProjection
+  TriplaneOccupancyModel o-- BaseTriplaneLifter
+```
+

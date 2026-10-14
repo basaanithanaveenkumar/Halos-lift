@@ -33,6 +33,7 @@ def test_all_lifters_registered() -> None:
         "tiim",
         "tpvformer",
         "mlp_view",
+        "alpamayo",
     }
 
 

@@ -51,9 +51,15 @@ def test_scaled_to_rescales_pixels(cameras: Cameras) -> None:
 
 def test_transformed_cameras_see_transformed_points(cameras: Cameras) -> None:
     t = rotation_z(37.0)
-    pts = torch.randn(cameras.batch_size, 30, 3) * 8
+    g = torch.Generator().manual_seed(0)
+    pts = torch.randn(cameras.batch_size, 30, 3, generator=g) * 8
     pts_rot = pts @ t[:3, :3].T
     uv, d, _ = cameras.project(pts)
     uv2, d2, _ = cameras.transformed(t).project(pts_rot)
-    assert torch.allclose(uv, uv2, atol=1e-3)
     assert torch.allclose(d, d2, atol=1e-4)
+    # uv = xy / max(depth, eps) is ill-conditioned for points near or behind a camera's image
+    # plane: float32 rounding there exceeds any fixed tolerance, so compare uv only for points
+    # clearly in front of the camera.
+    well_posed = d > 0.5
+    assert well_posed.float().mean() > 0.3
+    assert torch.allclose(uv[well_posed], uv2[well_posed], atol=1e-3)
