@@ -6,6 +6,7 @@ from torch import Tensor, nn
 
 from lifting.encoders.base import ImageEncoder
 from lifting.encoders.fpn import FPN
+from lifting.exceptions import InvalidConfigError, MissingDependencyError
 
 _STAGE_CHANNELS = {
     "resnet18": (64, 128, 256, 512),
@@ -36,11 +37,11 @@ class ResNetEncoder(ImageEncoder):
         try:
             import torchvision
         except ImportError as err:  # pragma: no cover - exercised only without torchvision
-            raise ImportError("ResNetEncoder needs `pip install lifting[vision]`") from err
+            raise MissingDependencyError("torchvision", "vision") from err
         if arch not in _STAGE_CHANNELS:
-            raise ValueError(f"unknown arch {arch!r}; choose from {sorted(_STAGE_CHANNELS)}")
+            raise InvalidConfigError(f"unknown arch {arch!r}; choose from {sorted(_STAGE_CHANNELS)}")
         if not 1 <= num_levels <= 3:
-            raise ValueError("num_levels must be in [1, 3]")
+            raise InvalidConfigError("num_levels must be in [1, 3]")
         net = getattr(torchvision.models, arch)(weights="DEFAULT" if pretrained else None)
         self.stem = nn.Sequential(net.conv1, net.bn1, net.relu, net.maxpool, net.layer1)
         self.stages = nn.ModuleList([net.layer2, net.layer3, net.layer4][:num_levels])

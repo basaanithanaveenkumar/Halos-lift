@@ -16,6 +16,8 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
+from lifting.exceptions import CameraGeometryError
+
 
 @dataclass
 class Cameras:
@@ -33,11 +35,11 @@ class Cameras:
 
     def __post_init__(self) -> None:
         if self.intrinsics.shape[-2:] != (3, 3):
-            raise ValueError(f"intrinsics must be (B, N, 3, 3), got {tuple(self.intrinsics.shape)}")
+            raise CameraGeometryError(f"intrinsics must be (B, N, 3, 3), got {tuple(self.intrinsics.shape)}")
         if self.cam_to_ego.shape[-2:] != (4, 4):
-            raise ValueError(f"cam_to_ego must be (B, N, 4, 4), got {tuple(self.cam_to_ego.shape)}")
+            raise CameraGeometryError(f"cam_to_ego must be (B, N, 4, 4), got {tuple(self.cam_to_ego.shape)}")
         if self.intrinsics.shape[:2] != self.cam_to_ego.shape[:2]:
-            raise ValueError("intrinsics and cam_to_ego disagree on (B, N)")
+            raise CameraGeometryError("intrinsics and cam_to_ego disagree on (B, N)")
 
     # ------------------------------------------------------------------ properties
     @property

@@ -7,6 +7,8 @@ import importlib
 from collections.abc import Callable
 from typing import Any
 
+from lifting.exceptions import InvalidConfigError
+
 
 def resolve_entry(entry: str) -> Callable[[argparse.Namespace], Any]:
     """``"package.module:function"`` -> the function.
@@ -16,7 +18,7 @@ def resolve_entry(entry: str) -> Callable[[argparse.Namespace], Any]:
     """
     module_name, sep, name = entry.rpartition(":")
     if not sep or not module_name or not name:
-        raise ValueError(f"entry must look like 'package.module:function', got {entry!r}")
+        raise InvalidConfigError(f"entry must look like 'package.module:function', got {entry!r}")
     return getattr(importlib.import_module(module_name), name)
 
 

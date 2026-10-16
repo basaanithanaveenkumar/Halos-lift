@@ -6,6 +6,7 @@ from torch import Tensor, nn
 
 from lifting.encoders.base import ImageEncoder
 from lifting.encoders.fpn import FPN
+from lifting.exceptions import InvalidConfigError
 from lifting.layers import ConvNormAct, ResidualBlock
 
 
@@ -21,7 +22,7 @@ class SimpleConvEncoder(ImageEncoder):
     def __init__(self, out_channels: int = 64, num_levels: int = 2, width: int = 32) -> None:
         super().__init__()
         if not 1 <= num_levels <= 3:
-            raise ValueError("num_levels must be in [1, 3]")
+            raise InvalidConfigError("num_levels must be in [1, 3]")
         self.out_channels = out_channels
         self.strides = tuple(4 * 2**i for i in range(num_levels))
         self.stem = nn.Sequential(ConvNormAct(3, width, 3, 2), ResidualBlock(width, width, 2))

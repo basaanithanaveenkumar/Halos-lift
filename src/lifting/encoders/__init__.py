@@ -14,6 +14,7 @@ from lifting.encoders.fpn import FPN
 from lifting.encoders.resnet_encoder import ResNetEncoder
 from lifting.encoders.simple_conv_encoder import SimpleConvEncoder
 
+
 # HaleBackboneEncoder wraps hale_core vision backbones.
 # Imported lazily to avoid a hard dependency on hale_core at import time;
 # only loaded when explicitly used.

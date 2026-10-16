@@ -26,7 +26,6 @@ from typing import List, Optional
 import torch
 from torch import Tensor
 
-
 # ─── ChamferDistanceMetric ───────────────────────────────────────────────────
 
 def _pairwise_sq_dist(a: Tensor, b: Tensor) -> Tensor:

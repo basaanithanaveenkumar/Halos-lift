@@ -22,7 +22,6 @@ from typing import List, Optional
 import torch
 from torch import Tensor
 
-
 # ─── BEVIoUMetric ─────────────────────────────────────────────────────────────
 
 class BEVIoUMetric:

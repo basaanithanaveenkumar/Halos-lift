@@ -15,10 +15,10 @@ from lifting.data.object_sampler import ObjectSampler
 from lifting.data.ray_cast_renderer import RayCastRenderer, RenderResult
 from lifting.data.scene_batch import SceneBatch
 from lifting.data.scene_objects import SceneObjects
-from lifting.data.synthetic_scene_dataset import SyntheticSceneDataset
 
 # Stage-aware datasets (new)
-from lifting.data.stages import TrainingPhase, PHASE_DATASET_SPECS, PHASE_NOTES
+from lifting.data.stages import PHASE_DATASET_SPECS, PHASE_NOTES, TrainingPhase
+from lifting.data.synthetic_scene_dataset import SyntheticSceneDataset
 
 __all__ = [
     # Existing API — unchanged

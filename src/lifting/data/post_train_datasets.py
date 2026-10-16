@@ -18,14 +18,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import torch
+from loguru import logger
 from torch.utils.data import Dataset
 
-from loguru import logger
-
 from lifting.data.camera_rig import CameraRig
-from lifting.data.synthetic_scene_dataset import SyntheticSceneDataset
-from lifting.geometry import GridSpec
 from lifting.data.stages import POST_TRAIN_DATASET_SPECS, TrainingPhase
+from lifting.data.synthetic_scene_dataset import SyntheticSceneDataset
+from lifting.exceptions import InvalidConfigError
+from lifting.geometry import GridSpec
 
 
 @dataclass
@@ -175,7 +175,7 @@ def build_post_train_dataset(name: str, **kwargs) -> Dataset:
         "nuscenes-map-seg": NuScenesMapSegDataset,
     }
     if name not in _builders:
-        raise ValueError(
+        raise InvalidConfigError(
             f"Unknown post-train dataset {name!r}. "
             f"Choose from: {sorted(_builders)}"
         )

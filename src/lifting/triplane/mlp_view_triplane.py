@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 from torch import Tensor, nn
 
+from lifting.exceptions import CameraGeometryError
 from lifting.geometry import Cameras, GridSpec
 from lifting.layers import ConvNormAct
 from lifting.lifters.tpvformer.tpv_planes import TPVPlanes
@@ -59,7 +60,7 @@ class MLPViewTriplaneLifter(BaseTriplaneLifter):
         feats = features[self.level]  # B N C h w
         b, n, c = feats.shape[:3]
         if n != self.num_cameras:
-            raise ValueError(
+            raise CameraGeometryError(
                 f"MLPViewTriplaneLifter was built for {self.num_cameras} cameras, got {n}"
             )
         flat = feats.flatten(3)

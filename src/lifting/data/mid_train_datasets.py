@@ -17,17 +17,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import torch
-from torch.utils.data import Dataset
-
 from loguru import logger
+from torch.utils.data import Dataset
 
 from lifting.data.camera_rig import CameraRig
 from lifting.data.label_rasterizer import LabelRasterizer
 from lifting.data.object_sampler import ObjectSampler
 from lifting.data.ray_cast_renderer import RayCastRenderer
+from lifting.data.stages import MID_TRAIN_DATASET_SPECS, TrainingPhase
 from lifting.data.synthetic_scene_dataset import SyntheticSceneDataset
 from lifting.geometry import GridSpec
-from lifting.data.stages import MID_TRAIN_DATASET_SPECS, TrainingPhase
 
 
 @dataclass

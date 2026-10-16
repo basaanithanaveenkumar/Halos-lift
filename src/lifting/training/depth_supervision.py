@@ -22,6 +22,7 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 
 from lifting.data import SceneBatch
+from lifting.exceptions import InvalidConfigError
 from lifting.geometry import DepthBins
 from lifting.lifters.depth_head import DepthHead
 from lifting.training.task import Task
@@ -86,7 +87,7 @@ class DepthSupervisedTask(Task):
         self, task: Task, weight: float = 1.0, default_bins: DepthBins | None = None
     ) -> None:
         if weight < 0:
-            raise ValueError(f"weight must be >= 0, got {weight}")
+            raise InvalidConfigError(f"weight must be >= 0, got {weight}")
         self.task = task
         self.weight = weight
         self.default_bins = default_bins or DepthBins()
@@ -108,7 +109,7 @@ class DepthSupervisedTask(Task):
             for handle in handles:
                 handle.remove()
         if not captured:
-            raise ValueError(
+            raise InvalidConfigError(
                 "DepthSupervisedTask needs a model with a DepthHead (depth_warp, lift_splat ...)"
             )
         return {**outputs, DEPTH_PREDICTIONS: captured}

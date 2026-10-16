@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from torch import Tensor, nn
 
 from lifting.attention.offset_init import init_sampling_offsets
+from lifting.exceptions import InvalidConfigError
 from lifting.ops import multi_scale_deformable_attn_3d
 
 
@@ -25,7 +26,7 @@ class MSDeformableAttention3D(nn.Module):
     ) -> None:
         super().__init__()
         if embed_dims % num_heads:
-            raise ValueError("embed_dims must be divisible by num_heads")
+            raise InvalidConfigError("embed_dims must be divisible by num_heads")
         self.embed_dims = embed_dims
         self.num_heads = num_heads
         self.num_levels = num_levels

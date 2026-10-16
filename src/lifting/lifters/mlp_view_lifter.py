@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 from torch import Tensor, nn
 
+from lifting.exceptions import CameraGeometryError
 from lifting.geometry import Cameras, GridSpec
 from lifting.layers import ConvNormAct
 from lifting.lifters.base import LIFTERS, BaseLifter
@@ -51,7 +52,7 @@ class MLPViewLifter(BaseLifter):
         feats = features[self.level]  # B N C h w
         b, n, c = feats.shape[:3]
         if n != len(self.view_mlps):
-            raise ValueError(f"MLPViewLifter was built for {len(self.view_mlps)} cameras, got {n}")
+            raise CameraGeometryError(f"MLPViewLifter was built for {len(self.view_mlps)} cameras, got {n}")
         flat = feats.flatten(3)
         bev = sum(mlp(flat[:, i]) for i, mlp in enumerate(self.view_mlps))
         nx, ny = self.grid.bev_shape

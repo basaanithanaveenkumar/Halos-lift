@@ -9,6 +9,8 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from lifting.exceptions import InvalidConfigError
+
 
 def voxel_pooling(
     features: Tensor,
@@ -30,7 +32,7 @@ def voxel_pooling(
         ``(B, num_cells, C)`` pooled grid.
     """
     if reduce not in ("sum", "mean"):
-        raise ValueError(f"reduce must be 'sum' or 'mean', got {reduce!r}")
+        raise InvalidConfigError(f"reduce must be 'sum' or 'mean', got {reduce!r}")
     batch, _, channels = features.shape
     offsets = (torch.arange(batch, device=cell_index.device) * num_cells)[:, None]
     flat_index = (cell_index + offsets)[valid]

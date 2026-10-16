@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 
 from lifting.data import SceneBatch
+from lifting.exceptions import InvalidConfigError
 from lifting.training.task import Task
 
 
@@ -46,7 +47,7 @@ class OccupancyTask(Task):
     def plane_loss(self, outputs: dict, batch: SceneBatch) -> Tensor:
         """Mean cross-entropy of the ``xy`` / ``xz`` / ``yz`` plane logits."""
         if "aux_logits" not in outputs:
-            raise ValueError("aux_weight > 0 needs a model built with aux_heads=True")
+            raise InvalidConfigError("aux_weight > 0 needs a model built with aux_heads=True")
         occupancy = batch.occupancy  # (B, X, Y, Z)
         targets = (occupancy.amax(3), occupancy.amax(2), occupancy.amax(1))
         weight = self.class_weights.to(occupancy.device)

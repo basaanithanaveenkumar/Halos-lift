@@ -23,10 +23,9 @@ from lifting.data.camera_rig import CameraRig
 from lifting.data.label_rasterizer import LabelRasterizer
 from lifting.data.object_sampler import ObjectSampler
 from lifting.data.ray_cast_renderer import RayCastRenderer
+from lifting.data.stages import PRETRAIN_DATASET_SPECS, TrainingPhase
 from lifting.data.synthetic_scene_dataset import SyntheticSceneDataset
 from lifting.geometry import GridSpec
-
-from lifting.data.stages import PRETRAIN_DATASET_SPECS, TrainingPhase
 
 
 @dataclass

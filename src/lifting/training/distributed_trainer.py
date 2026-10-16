@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 
 from lifting.data import SceneBatch
 from lifting.distributed.session import DistributedSession
+from lifting.exceptions import EmptyDataError
 from lifting.metrics import IoUMetric
 from lifting.training.task import Task
 from lifting.training.trainer import Trainer, TrainingHistory
@@ -89,7 +90,7 @@ class DistributedTrainer(Trainer):
                 if self.global_step >= steps:
                     break
             if not losses:
-                raise ValueError("the training loader produced no batches")
+                raise EmptyDataError("the training loader produced no batches")
             self.epoch += 1
             mean_loss = self.session.mean(sum(losses) / len(losses))
             if on_epoch_end is not None:

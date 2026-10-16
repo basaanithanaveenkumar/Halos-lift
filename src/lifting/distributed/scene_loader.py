@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from lifting.data import SceneBatch
 from lifting.distributed.session import DistributedSession
+from lifting.exceptions import InvalidConfigError
 
 
 class SceneLoaderBuilder:
@@ -43,7 +44,7 @@ class SceneLoaderBuilder:
         seed: int = 0,
     ) -> None:
         if batch_size < 1:
-            raise ValueError(f"batch_size must be >= 1, got {batch_size}")
+            raise InvalidConfigError(f"batch_size must be >= 1, got {batch_size}")
         self.session = session
         self.batch_size = batch_size
         self.num_workers = num_workers

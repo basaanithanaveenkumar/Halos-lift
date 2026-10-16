@@ -19,6 +19,8 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from lifting.exceptions import InvalidConfigError
+
 
 class MipNeRF360Parametrizer:
     """Non-linear mapping from integer cell index to metric coordinate on one axis.
@@ -60,14 +62,14 @@ class MipNeRF360Parametrizer:
         center_m: float = 0.0,
     ) -> None:
         if total < 1:
-            raise ValueError(f"total must be >= 1, got {total}")
+            raise InvalidConfigError(f"total must be >= 1, got {total}")
         if not 0.5 < inner_frac <= 1.0:
-            raise ValueError(
+            raise InvalidConfigError(
                 f"inner_frac must be in (0.5, 1] (the contracted tails need fewer cells than the "
                 f"inner zone), got {inner_frac}"
             )
         if total_extent_m <= 0:
-            raise ValueError(f"total_extent_m must be > 0, got {total_extent_m}")
+            raise InvalidConfigError(f"total_extent_m must be > 0, got {total_extent_m}")
         self.total = total
         self.inner_frac = inner_frac
         self.total_extent_m = total_extent_m

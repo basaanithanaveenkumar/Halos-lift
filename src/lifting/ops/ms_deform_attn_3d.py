@@ -13,6 +13,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
+from lifting.exceptions import InvalidConfigError
+
 
 def multi_scale_deformable_attn_3d(
     value: Tensor,
@@ -36,7 +38,7 @@ def multi_scale_deformable_attn_3d(
     batch, _, heads, dim = value.shape
     _, queries, _, levels, points, _ = sampling_locations.shape
     if len(volume_shapes) != levels:
-        raise ValueError(f"expected {levels} volume shapes, got {len(volume_shapes)}")
+        raise InvalidConfigError(f"expected {levels} volume shapes, got {len(volume_shapes)}")
 
     split_sizes = [int(d) * int(h) * int(w) for d, h, w in volume_shapes]
     value_levels = value.split(split_sizes, dim=1)

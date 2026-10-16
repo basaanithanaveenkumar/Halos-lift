@@ -9,6 +9,7 @@ import torch
 from torch import nn
 
 from lifting.data import SceneBatch
+from lifting.exceptions import EmptyDataError
 from lifting.metrics import IoUMetric
 from lifting.training.task import Task
 
@@ -127,4 +128,4 @@ def _cycle(iterable: Iterable[SceneBatch]) -> Iterator[SceneBatch]:
             yielded = True
             yield item
         if not yielded:
-            raise ValueError("cannot train on an empty iterable of batches")
+            raise EmptyDataError("cannot train on an empty iterable of batches")

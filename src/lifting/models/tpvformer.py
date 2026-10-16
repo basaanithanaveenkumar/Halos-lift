@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from torch import Tensor, nn
 
 from lifting.encoders import ImageEncoder
+from lifting.exceptions import InvalidConfigError
 from lifting.geometry import Cameras
 from lifting.lifters.tpvformer import TPVAggregator, TPVFormerLifter
 
@@ -32,7 +33,7 @@ class TPVFormer(nn.Module):
         self.lifter = lifter
         self.aggregator = aggregator
         if aux_heads is not None and len(aux_heads) != 3:
-            raise ValueError(f"aux_heads needs one head per plane (3), got {len(aux_heads)}")
+            raise InvalidConfigError(f"aux_heads needs one head per plane (3), got {len(aux_heads)}")
         self.aux_heads = nn.ModuleList(aux_heads) if aux_heads is not None else None
 
     def forward(self, images: Tensor, cameras: Cameras, points: Tensor | None = None) -> dict:

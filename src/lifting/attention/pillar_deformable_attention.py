@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from torch import Tensor, nn
 
 from lifting.attention.offset_init import init_sampling_offsets
+from lifting.exceptions import InvalidConfigError
 from lifting.ops import multi_scale_deformable_attn_2d
 
 
@@ -36,7 +37,7 @@ class PillarDeformableAttention(nn.Module):
     ) -> None:
         super().__init__()
         if num_points % num_anchors:
-            raise ValueError("num_points must be a multiple of num_anchors")
+            raise InvalidConfigError("num_points must be a multiple of num_anchors")
         self.embed_dims = embed_dims
         self.num_heads = num_heads
         self.num_levels = num_levels

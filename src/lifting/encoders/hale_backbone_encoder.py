@@ -62,6 +62,7 @@ from torch import Tensor
 
 from lifting.encoders.base import ImageEncoder
 from lifting.encoders.fpn import FPN
+from lifting.exceptions import InvalidConfigError
 
 
 class HaleBackboneEncoder(ImageEncoder):
@@ -130,7 +131,7 @@ class HaleBackboneEncoder(ImageEncoder):
         n_available = len(backbone_feature_dims)
 
         if num_levels > n_available:
-            raise ValueError(
+            raise InvalidConfigError(
                 f"backbone '{backbone_name}' has only {n_available} feature levels, "
                 f"but num_levels={num_levels} was requested"
             )
