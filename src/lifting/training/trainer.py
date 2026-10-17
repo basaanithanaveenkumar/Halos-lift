@@ -1,9 +1,11 @@
-"""Minimal, task-agnostic training loop."""
+"""Minimal, task-agnostic training loop.
+
+Classes moved to their own modules (one public class per file) are re-exported here so
+existing ``from lifting.training.trainer import ...`` statements keep working."""
 
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Iterator
-from dataclasses import dataclass, field
 
 import torch
 from torch import nn
@@ -12,22 +14,9 @@ from lifting.data import SceneBatch
 from lifting.exceptions import EmptyDataError
 from lifting.metrics import IoUMetric
 from lifting.training.task import Task
+from lifting.training.training_history import TrainingHistory
 
 StepCallback = Callable[[int, float], None]
-
-
-@dataclass
-class TrainingHistory:
-    """Loss per optimisation step."""
-
-    losses: list[float] = field(default_factory=list)
-
-    def smoothed(self, window: int = 10) -> list[float]:
-        out = []
-        for i in range(len(self.losses)):
-            chunk = self.losses[max(0, i - window + 1) : i + 1]
-            out.append(sum(chunk) / len(chunk))
-        return out
 
 
 class Trainer:
@@ -129,3 +118,5 @@ def _cycle(iterable: Iterable[SceneBatch]) -> Iterator[SceneBatch]:
             yield item
         if not yielded:
             raise EmptyDataError("cannot train on an empty iterable of batches")
+
+__all__ = ["TrainingHistory"]

@@ -14,7 +14,8 @@ from lifting.distributed.session import DistributedSession
 from lifting.exceptions import EmptyDataError
 from lifting.metrics import IoUMetric
 from lifting.training.task import Task
-from lifting.training.trainer import Trainer, TrainingHistory
+from lifting.training.trainer import Trainer
+from lifting.training.training_history import TrainingHistory
 
 #: ``on_epoch_end(epoch, global_step, mean_loss_over_ranks)``
 EpochCallback = Callable[[int, int, float], None]

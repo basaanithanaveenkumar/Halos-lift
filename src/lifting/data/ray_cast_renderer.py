@@ -1,28 +1,15 @@
-"""Vectorised ray casting of box scenes - produces geometrically exact synthetic camera views."""
+"""Vectorised ray casting of box scenes - produces geometrically exact synthetic camera views.
+
+Classes moved to their own modules (one public class per file) are re-exported here so
+existing ``from lifting.data.ray_cast_renderer import ...`` statements keep working."""
 
 from __future__ import annotations
-
-from dataclasses import dataclass
 
 import torch
 from torch import Tensor
 
+from lifting.data.render_result import RenderResult
 from lifting.data.scene_objects import SceneObjects
-
-
-@dataclass
-class RenderResult:
-    """Rendered views.
-
-    Attributes:
-        images: ``(N, 3, H, W)`` RGB in ``[0, 1]``.
-        depth: ``(N, H, W)`` camera-frame z of the first hit (``inf`` for sky).
-        labels: ``(N, H, W)`` semantic id per pixel (0 = ground / sky).
-    """
-
-    images: Tensor
-    depth: Tensor
-    labels: Tensor
 
 
 class RayCastRenderer:
@@ -144,3 +131,5 @@ class RayCastRenderer:
             depth=depth.view(n, h, w),
             labels=labels.view(n, h, w),
         )
+
+__all__ = ["RenderResult"]

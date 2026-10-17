@@ -28,18 +28,14 @@ Segmentation (existing)
 IoUMetric — confusion-matrix based semantic segmentation mIoU
 """
 
-from lifting.metrics.bev import (
-    BEVIoUMetric,
-    BEVObjectMetric,
-    RangeErrorMetric,
-)
+from lifting.metrics.bev_iou_metric import BEVIoUMetric
+from lifting.metrics.bev_object_metric import BEVObjectMetric
+from lifting.metrics.chamfer_distance_metric import ChamferDistanceMetric
 from lifting.metrics.depth import DepthMetrics
-from lifting.metrics.geometry import (
-    ChamferDistanceMetric,
-    EPEMetric,
-    FScoreMetric,
-)
+from lifting.metrics.epe_metric import EPEMetric
+from lifting.metrics.f_score_metric import FScoreMetric
 from lifting.metrics.iou_metric import IoUMetric
+from lifting.metrics.range_error_metric import RangeErrorMetric
 
 __all__ = [
     # existing

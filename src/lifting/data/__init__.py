@@ -3,16 +3,18 @@
 Stage-aware datasets:
 
     from lifting.data.stages import TrainingPhase
-    from lifting.data.pretrain_datasets import LargeSyntheticSceneDataset
-    from lifting.data.mid_train_datasets import NuScenesBEVDataset
-    from lifting.data.post_train_datasets import NuScenesOccupancyDataset, NuScenesMapSegDataset
+    from lifting.data.large_synthetic_scene_dataset import LargeSyntheticSceneDataset
+    from lifting.data.nuscenes_bev_dataset import NuScenesBEVDataset
+    from lifting.data.nuscenes_occupancy_dataset import NuScenesOccupancyDataset
+    from lifting.data.nuscenes_map_seg_dataset import NuScenesMapSegDataset
 """
 
 from lifting.data.camera_rig import CameraRig
 from lifting.data.label_rasterizer import LabelRasterizer
 from lifting.data.object_class import DEFAULT_CLASSES, PEDESTRIAN, VEHICLE, ObjectClass
 from lifting.data.object_sampler import ObjectSampler
-from lifting.data.ray_cast_renderer import RayCastRenderer, RenderResult
+from lifting.data.ray_cast_renderer import RayCastRenderer
+from lifting.data.render_result import RenderResult
 from lifting.data.scene_batch import SceneBatch
 from lifting.data.scene_objects import SceneObjects
 

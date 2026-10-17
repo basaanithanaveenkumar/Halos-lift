@@ -25,8 +25,9 @@ from lifting.triplane.animation.storyboards import (
     TPVFormerStoryboard,
 )
 from lifting.triplane.animation.theme import Theme
+from lifting.triplane.animation.toy_object import ToyObject
 from lifting.triplane.animation.toy_rig import ToyRig
-from lifting.triplane.animation.toy_scene import ToyObject, ToyScene
+from lifting.triplane.animation.toy_scene import ToyScene
 
 __all__ = [
     "STORYBOARDS",

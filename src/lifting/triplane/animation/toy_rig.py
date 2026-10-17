@@ -1,36 +1,16 @@
-"""Four pinhole cameras on the toy ego vehicle, with exact projection and ray casting."""
+"""Four pinhole cameras on the toy ego vehicle, with exact projection and ray casting.
+
+Classes moved to their own modules (one public class per file) are re-exported here so
+existing ``from lifting.triplane.animation.toy_rig import ...`` statements keep working."""
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 
 import numpy as np
 
+from lifting.triplane.animation.toy_camera import ToyCamera
 from lifting.triplane.animation.toy_scene import ToyScene
-
-
-@dataclass(frozen=True)
-class ToyCamera:
-    """A level camera at ``position`` looking along ``yaw`` (degrees, ``0`` = ``+x``)."""
-
-    name: str
-    position: tuple[float, float, float]
-    yaw: float
-
-    @property
-    def forward(self) -> np.ndarray:
-        a = math.radians(self.yaw)
-        return np.array([math.cos(a), math.sin(a), 0.0])
-
-    @property
-    def right(self) -> np.ndarray:
-        a = math.radians(self.yaw)
-        return np.array([math.sin(a), -math.cos(a), 0.0])
-
-    @property
-    def up(self) -> np.ndarray:
-        return np.array([0.0, 0.0, 1.0])
 
 
 class ToyRig:
@@ -117,3 +97,5 @@ def _slab(o: np.ndarray, d: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> float
         if t0 > t1:
             return None
     return t0
+
+__all__ = ["ToyCamera"]
