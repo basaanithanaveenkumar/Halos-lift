@@ -57,6 +57,7 @@ class VerificationGifRenderer:
     def labelled(
         self, tile: Image.Image, title: str, subtitle: str = "", color: tuple = TEXT
     ) -> Image.Image:
+        """Return ``image`` with a caption bar."""
         canvas = Image.new("RGB", (self.tile, self.tile + self.label_height), BACKGROUND)
         canvas.paste(tile, (0, self.label_height))
         draw = ImageDraw.Draw(canvas)
@@ -96,6 +97,7 @@ class VerificationGifRenderer:
         )
 
     def frames(self, report: VerificationReport, batch: SceneBatch) -> list[Image.Image]:
+        """Render the animation frames for a verification report."""
         rows = [report.baseline, *report.lifters]
         cameras = self.camera_strip(batch.images[0], self.columns * self.tile)
         gt_bev = self.labelled(
@@ -150,6 +152,7 @@ class VerificationGifRenderer:
     def save(
         self, report: VerificationReport, batch: SceneBatch, path: str | Path, frame_ms: int = 350
     ) -> Path:
+        """Render and write the GIF; returns the path."""
         frames = self.frames(report, batch)
         durations = [frame_ms] * (len(frames) - 2) + [2500, 2500]
         path = Path(path)

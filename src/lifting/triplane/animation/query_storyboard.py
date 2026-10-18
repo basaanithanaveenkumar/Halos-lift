@@ -38,10 +38,13 @@ class QueryStoryboard(Storyboard):
         return [(x, y, z) for x in np.linspace(-3.5, 3.5, n)]
 
     def query_center(self, plane: int) -> tuple[float, float, float]:
+        """Metric centre of the queried cell on ``plane``."""
         a, b = self.QUERIES[plane]
         return tuple(np.array(self.scene.plane_cell(plane, a, b)).mean(0))  # type: ignore[return-value]
 
     def step_queries(self, caption: str) -> Step:
+        """Step introducing the learnable plane queries."""
+
         def over(ctx: FrameContext, t: float) -> None:
             for plane in range(3):
                 ctx.painter.plane_queries(plane, alpha=min(1.0, 1.6 * t))
@@ -50,6 +53,8 @@ class QueryStoryboard(Storyboard):
         return Step("Learned plane queries", caption, None, over, frames=7, objects_alpha=0.6)
 
     def step_anchors(self) -> Step:
+        """Step lifting each query to a pillar/line of 3D anchor points."""
+
         def over(ctx: FrameContext, t: float) -> None:
             for plane in range(3):
                 ctx.painter.plane_queries(plane, alpha=0.35)
@@ -75,6 +80,8 @@ class QueryStoryboard(Storyboard):
         )
 
     def step_project_anchors(self) -> Step:
+        """Step projecting the 3D anchors into the camera images."""
+
         def over(ctx: FrameContext, t: float) -> None:
             for plane in range(3):
                 color = self.theme.planes[plane]
@@ -96,6 +103,7 @@ class QueryStoryboard(Storyboard):
         )
 
     def step_deformable(self, title: str, caption: str, self_attention: bool = True) -> Step:
+        """Step sampling image features around the projected anchors with deformable attention."""
         refs = [
             (plane, cam, u, v)
             for plane in range(3)
@@ -133,6 +141,7 @@ class QueryStoryboard(Storyboard):
         return Step(title, caption, None, over, frames=12, objects_alpha=0.5)
 
     def step_refine(self, caption: str) -> Step:
+        """Step refining the queries into the output planes."""
         labels = self.facts.plane_labels
 
         def under(ctx: FrameContext, t: float) -> None:

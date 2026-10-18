@@ -79,6 +79,7 @@ class Storyboard(ABC):
         return frames, durations
 
     def render_frame(self, steps: list[Step], idx: int, t: float) -> Image.Image:
+        """Render frame ``t`` (in ``[0, 1]``) of step ``idx``."""
         step = steps[idx]
         canvas = Canvas(self.SIZE, self.theme)
         painter = ScenePainter(canvas, self.projector, self.scene, self.rig)

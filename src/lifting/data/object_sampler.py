@@ -37,6 +37,14 @@ class ObjectSampler:
         return rng[0] + (rng[1] - rng[0]) * torch.rand((), generator=g).item()
 
     def sample(self, generator: torch.Generator) -> SceneObjects:
+        """Draw a random set of scene objects.
+
+        Args:
+            generator: random generator (the only source of randomness, so scenes are reproducible).
+
+        Returns:
+            The sampled objects.
+        """
         lo, hi = self.num_objects
         target = int(torch.randint(lo, hi + 1, (), generator=generator))
         centers, radii, sizes, yaws, labels, colors = [], [], [], [], [], []

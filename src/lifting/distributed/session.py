@@ -46,7 +46,11 @@ class DistributedSession:
                 ``cuda:<local_rank>``.
         """
         owns = False
-        if int(os.environ.get("WORLD_SIZE", 1)) > 1 and dist.is_available() and not dist.is_initialized():
+        if (
+            int(os.environ.get("WORLD_SIZE", 1)) > 1
+            and dist.is_available()
+            and not dist.is_initialized()
+        ):
             dist.init_process_group("nccl" if torch.cuda.is_available() else "gloo")
             owns = True
         initialised = dist.is_available() and dist.is_initialized()
@@ -67,6 +71,7 @@ class DistributedSession:
 
     @property
     def distributed(self) -> bool:
+        """Whether more than one process takes part in this job."""
         return self.world_size > 1
 
     # ------------------------------------------------------------------ model / data
@@ -103,6 +108,7 @@ class DistributedSession:
         return t.item() / self.world_size
 
     def barrier(self) -> None:
+        """Block until every rank reaches this point (no-op for a single process)."""
         if self.distributed:
             dist.barrier()
 

@@ -65,12 +65,23 @@ uv add "halos-lift @ git+https://github.com/basaanithanaveenkumar/Halos-lift"
 pip install "git+https://github.com/basaanithanaveenkumar/Halos-lift"
 # optional torchvision ResNet backbones
 uv add "halos-lift[vision] @ git+https://github.com/basaanithanaveenkumar/Halos-lift"
+# from a checkout, with the extras you need
+pip install -e '.[dev]'               # pytest, ruff, pyyaml
 ```
+
+| extra | adds | used by |
+|---|---|---|
+| `vision` | torchvision | `ResNetEncoder` |
+| `config` | pyyaml | `lifting-train --config` (YAML files with `_base_` inheritance) |
+| `ray` | hale-blocks[ray] | `lifting-train --ray` |
+| `webdataset` | hale-blocks[webdataset] | `lifting-train --webdataset` |
+| `distributed` | both of the above | multi-node training |
+| `dev` | pytest, ruff, pre-commit, pyyaml | tests and linting |
 
 The distribution is called `halos-lift` and the import name is `lifting`:
 `from lifting import build_bev_model`.
 
-The only dependencies are `torch`, `numpy` and `pillow`. The library runs on CPU, CUDA and MPS.
+The only required dependencies are `torch`, `numpy`, `pillow` and `loguru`. The library runs on CPU, CUDA and MPS.
 
 ## 30-second tour
 
@@ -80,26 +91,27 @@ from lifting import GridSpec, Cameras, build_bev_model, build_tpvformer
 
 grid = GridSpec(x_bounds=(-16, 16), y_bounds=(-16, 16), z_bounds=(-1, 3), resolution=(32, 32, 4))
 cameras = Cameras(
-    intrinsics=K,            # (B, N, 3, 3) pixel-from-camera
-    cam_to_ego=T,            # (B, N, 4, 4) camera (OpenCV) -> ego (x fwd, y left, z up)
+    intrinsics=K,  # (B, N, 3, 3) pixel-from-camera
+    cam_to_ego=T,  # (B, N, 4, 4) camera (OpenCV) -> ego (x fwd, y left, z up)
     image_size=(H, W),
 )
 
 # BEV semantic segmentation with ANY lifter
 model = build_bev_model("bevformer", grid, num_classes=3, image_size=(H, W), num_cameras=N)
-logits = model(images, cameras)["logits"]            # (B, 3, X, Y)
+logits = model(images, cameras)["logits"]  # (B, 3, X, Y)
 
 # TPVFormer 3D semantic occupancy + point queries
 tpv = build_tpvformer(grid, num_classes=3)
-out = tpv(images, cameras, points=lidar_xyz)         # voxel_logits (B,3,X,Y,Z), point_logits (B,3,P)
+out = tpv(images, cameras, points=lidar_xyz)  # voxel_logits (B,3,X,Y,Z), point_logits (B,3,P)
 ```
 
 Use a lifter on its own with your own encoder:
 
 ```python
 from lifting import LIFTERS
+
 lifter = LIFTERS.build("lift_splat", grid=grid, in_channels=128, out_channels=128)
-bev = lifter(features, cameras)   # features: list of (B, N, C, H_l, W_l), fine -> coarse
+bev = lifter(features, cameras)  # features: list of (B, N, C, H_l, W_l), fine -> coarse
 ```
 
 ## Lifters
@@ -143,10 +155,15 @@ verifier. Full documentation: [`docs/triplane.md`](docs/triplane.md) · notebook
 
 ```python
 from lifting.triplane import TRIPLANE_LIFTERS, build_triplane_model, build_triplane_bev_model
+
 lifter = TRIPLANE_LIFTERS.build("lift_splat", grid=grid, in_channels=64, out_channels=64)
-planes = lifter.lift_planes(features, cameras)                    # TPVPlanes(xy, xz, yz)
-occ = build_triplane_model("tiim", grid, num_classes=3)            # 3D occupancy + point queries, any technique
-bev = build_triplane_bev_model("bevformer", grid, num_classes=3, num_levels=2)  # BEVFormer V2 triplane, BEV seg
+planes = lifter.lift_planes(features, cameras)  # TPVPlanes(xy, xz, yz)
+occ = build_triplane_model(
+    "tiim", grid, num_classes=3
+)  # 3D occupancy + point queries, any technique
+bev = build_triplane_bev_model(
+    "bevformer", grid, num_classes=3, num_levels=2
+)  # BEVFormer V2 triplane, BEV seg
 ```
 
 ```mermaid
@@ -777,6 +794,18 @@ workers and `--webdataset` renders the scenes once into tar shards and streams t
 from HaleBlocks as optional extras (`pip install -e '.[distributed]'`). Details:
 [`docs/distributed.md`](docs/distributed.md).
 
+## Training from a config
+
+```bash
+lifting-train --config configs/train_synthetic.yaml --cfg-options train.steps=100 model.lifter=bevformer
+lifting-train --config configs/train_triplane.yaml     # _base_: train_synthetic.yaml
+```
+
+Configs support `_base_` inheritance, `_delete_`, and dotted `--cfg-options`; they are validated
+into a typed `TrainConfig`, and explicit flags still win. Encoders, lifters and tasks are chosen by
+name from the `ENCODERS`, `LIFTERS` / `TRIPLANE_LIFTERS` and `TASKS` registries. Class and
+sequence diagrams: [`docs/architecture.md`](docs/architecture.md) section 7.
+
 ## Tests
 
 ```bash
@@ -786,13 +815,13 @@ uv run pytest -m slow           # the full verification as a test
 
 | suite | what it proves |
 |---|---|
-| `tests/unit` | cameras, grid, ops vs naive loops, gradcheck, attention modules, registry, encoders, metric |
-| `tests/lifting` | **analytic lifting probes**: with pixel/depth *ramp* features each lifter must return, for every voxel, the exact pixel/depth where it is seen; Lift-Splat puts mass in the right voxel; 90° rig rotation ⇒ 90° rotated volume (equivariance); BEVFormer/TPV reference points are projected pillars/lines; TPV plane ↔ voxel ↔ point consistency |
-| `tests/data` | the renderer is geometrically exact (ground pixels unproject to z=0, box pixels onto the box), labels match objects |
+| `tests/unit` | cameras, grid, ops vs naive loops, gradcheck, attention modules, registries, config loader, encoders, metric, plus the sub-suites below |
+| `tests/unit/lifting` | **analytic lifting probes**: with pixel/depth *ramp* features each lifter must return, for every voxel, the exact pixel/depth where it is seen; Lift-Splat puts mass in the right voxel; 90° rig rotation ⇒ 90° rotated volume (equivariance); BEVFormer/TPV reference points are projected pillars/lines; TPV plane ↔ voxel ↔ point consistency |
+| `tests/unit/data` | the renderer is geometrically exact (ground pixels unproject to z=0, box pixels onto the box), labels match objects |
 | `tests/integration` | every lifter end-to-end with gradients reaching the encoder, 6-camera rigs, ResNet + multi-scale BEVFormer, TPVFormer occupancy & points, state-dict round trip, examples |
-| `tests/training` | every lifter overfits a batch; TPVFormer occupancy training; depth supervision; `lifting-train` single process, resume, DDP (2 ranks), WebDataset and Ray Train |
-| `tests/triplane` | every triplane lifter: plane shapes, BEV read off the planes, gradients, reuse of the unchanged BEV lifter, geometry (rotated rig), occupancy/BEV training, registry parity with `LIFTERS`, animation storyboards |
-| `tests/verification` | judging logic, extrinsic corruption, report/JSON/GIF, CLI, full verification (`slow`) |
+| `tests/unit/training`, `tests/integration/training` | depth supervision and plane aux losses (unit); every lifter overfits a batch; TPVFormer occupancy training; `lifting-train` single process, resume, DDP (2 ranks), WebDataset and Ray Train (integration) |
+| `tests/unit/triplane`, `tests/integration/triplane` | registry parity with `LIFTERS`, components and animation storyboards (unit); every triplane lifter: plane shapes, BEV read off the planes, gradients, geometry (rotated rig), occupancy/BEV training (integration) |
+| `tests/integration/verification` | judging logic, extrinsic corruption, report/JSON/GIF, CLI, full verification (`slow`) |
 
 ## Design
 
@@ -802,13 +831,14 @@ src/lifting/
 ├── ops/           pure-PyTorch deformable attention 2D/3D, voxel pooling, camera sampling
 ├── attention/     deformable attention modules      (one class per file)
 ├── layers/        ConvNormAct, ResidualBlock, FeedForward, HeightCompressor
-├── encoders/      ImageEncoder ABC, SimpleConvEncoder, ResNetEncoder, FPN
+├── config/        ConfigLoader (_base_, _delete_, dotted overrides), TrainConfig
+├── encoders/      ImageEncoder ABC, ENCODERS registry, SimpleConvEncoder, ResNetEncoder, FPN
 ├── lifters/       BaseLifter ABC + LIFTERS registry + all lifters (bevformer/, tpvformer/ sub-packages)
 ├── triplane/      BaseTriplaneLifter + TRIPLANE_LIFTERS: a triplane (TPV) version of every lifter, factories, GIF animations
 ├── decoders/      BEVDecoder, SegmentationHead
 ├── models/        BEVSegmentationModel, TPVFormer, factories
 ├── data/          synthetic world: CameraRig, ObjectSampler, RayCastRenderer, LabelRasterizer, dataset
-├── training/      Trainer + Task strategies (BEV segmentation, occupancy)
+├── training/      Trainer + Task strategies (TASKS registry: BEV segmentation, occupancy)
 ├── metrics/       IoUMetric
 └── verification/  LiftingVerifier, ExtrinsicCorruption, reports, GIF renderer
 ```

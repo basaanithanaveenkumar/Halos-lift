@@ -147,28 +147,58 @@ src/lifting/triplane/
 └── animation/                  Pillow-only step-by-step GIFs (one storyboard per technique)
 ```
 
+### Sequence: one forward pass
+
+```mermaid
+sequenceDiagram
+  participant U as caller
+  participant M as TriplaneOccupancyModel
+  participant E as ImageEncoder
+  participant L as BaseTriplaneLifter
+  participant A as TPVAggregator
+  U->>M: forward(images, cameras, points)
+  M->>E: encode (B*N images)
+  E-->>M: feature pyramid
+  M->>L: lift_planes(features, cameras)
+  L-->>M: TPVPlanes (xy, xz, yz)
+  M->>A: voxels(planes), points(planes, points)
+  A-->>M: voxel_logits, point_logits
+  M-->>U: dict(planes, voxel_logits, point_logits)
+```
+
 ## API
 
 ```python
-from lifting.triplane import TRIPLANE_LIFTERS, build_triplane_lifter, build_triplane_model, build_triplane_bev_model
+from lifting.triplane import (
+    TRIPLANE_LIFTERS,
+    build_triplane_lifter,
+    build_triplane_model,
+    build_triplane_bev_model,
+)
 
 # the lifter alone: features = list of (B, N, C, H_l, W_l), fine -> coarse
 lifter = TRIPLANE_LIFTERS.build("lift_splat", grid=grid, in_channels=64, out_channels=64)
-planes = lifter.lift_planes(features, cameras)   # TPVPlanes(xy, xz, yz)
-bev    = lifter(features, cameras)               # (B, 64, X, Y)
+planes = lifter.lift_planes(features, cameras)  # TPVPlanes(xy, xz, yz)
+bev = lifter(features, cameras)  # (B, 64, X, Y)
 
 # with context injection (feature_size / num_cameras / depth_bins), like lifting.models.build_lifter
-lifter = build_triplane_lifter("mlp_view", grid, 64, image_size=(48, 96), num_cameras=4, encoder=encoder)
+lifter = build_triplane_lifter(
+    "mlp_view", grid, 64, image_size=(48, 96), num_cameras=4, encoder=encoder
+)
 
 # 3D semantic occupancy + point queries with ANY technique (TPVFormer head, trains with OccupancyTask)
 model = build_triplane_model("tiim", grid, num_classes=3, aux_heads=True)
-out = model(images, cameras, points=lidar_xyz)   # planes, voxel_logits, point_logits, aux_logits
+out = model(images, cameras, points=lidar_xyz)  # planes, voxel_logits, point_logits, aux_logits
 
 # BEV segmentation read off the planes (same signature as lifting.build_bev_model)
-bev_model = build_triplane_bev_model("bevformer", grid, num_classes=3, num_levels=2)   # BEVFormer V2 triplane
+bev_model = build_triplane_bev_model(
+    "bevformer", grid, num_classes=3, num_levels=2
+)  # BEVFormer V2 triplane
 
 # any BEV lifter, including your own registered one
-adapter = TRIPLANE_LIFTERS.build("bev_adapter", grid=grid, in_channels=64, out_channels=64, base="my_lifter")
+adapter = TRIPLANE_LIFTERS.build(
+    "bev_adapter", grid=grid, in_channels=64, out_channels=64, base="my_lifter"
+)
 ```
 
 | name | class | wraps (unchanged) | new parts |
@@ -842,10 +872,11 @@ python scripts/make_triplane_gifs.py --only tiim bevformer --out /tmp/gifs
 ```python
 from lifting.triplane import TRIPLANE_LIFTERS, BaseTriplaneLifter, VoxelToTriplane
 
+
 @TRIPLANE_LIFTERS.register("my_triplane")
 class MyTriplaneLifter(BaseTriplaneLifter):
     def __init__(self, grid, in_channels, out_channels):
-        super().__init__(grid, in_channels, out_channels)      # creates the BEV head
+        super().__init__(grid, in_channels, out_channels)  # creates the BEV head
         self.core = MyBEVLifter(grid, in_channels, in_channels)  # reuse, don't edit
         self.to_planes = VoxelToTriplane(in_channels, grid, out_channels)
 

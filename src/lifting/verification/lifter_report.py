@@ -40,9 +40,11 @@ class LifterReport:
 
     @property
     def passed(self) -> bool:
+        """Whether every check of this lifter passed."""
         return all(self.checks.values())
 
     def to_dict(self) -> dict:
+        """JSON-serialisable summary of the lifter's results."""
         data = asdict(self)
         data.pop("snapshots")
         data.pop("corrupted_prediction")

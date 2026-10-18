@@ -35,6 +35,7 @@ class SimpleConvEncoder(ImageEncoder):
         self.neck = FPN(stage_channels, out_channels)
 
     def extract(self, images: Tensor) -> list[Tensor]:
+        """Return the FPN pyramid for normalised images (strides 4, 8, ...)."""
         x = self.stem(images)
         feats = []
         for stage in self.stages:

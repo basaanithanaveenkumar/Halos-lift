@@ -26,16 +26,20 @@ class BEVSegmentationTask(Task):
         self.class_weights = torch.tensor(weights, dtype=torch.float32)
 
     def forward(self, model: nn.Module, batch: SceneBatch) -> dict:
+        """Run model on the batch images and cameras."""
         return model(batch.images, batch.cameras)
 
     def loss(self, outputs: dict, batch: SceneBatch) -> Tensor:
+        """Return the scalar training loss for ``outputs`` against ``batch``."""
         logits = outputs["logits"]
         return F.cross_entropy(
             logits, batch.bev_labels, weight=self.class_weights.to(logits.device)
         )
 
     def predict(self, outputs: dict) -> Tensor:
+        """Argmax over the class axis of the BEV logits."""
         return outputs["logits"].argmax(1)
 
     def target(self, batch: SceneBatch) -> Tensor:
+        """Return the integer ground truth aligned with :meth:`predict`."""
         return batch.bev_labels

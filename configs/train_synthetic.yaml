@@ -1,0 +1,25 @@
+# Settings for `lifting-train --config configs/train_synthetic.yaml`.
+# Explicit command-line flags still override these values; use --cfg-options a.b=c to tweak.
+model:
+  lifter: simple_bev
+  kind: bev              # bev | triplane
+  channels: 32
+  num_classes: 3         # background + object classes
+  resolution: [32, 32, 4]
+
+data:
+  train_scenes: 512
+  val_scenes: 64
+  batch_size: 4
+  num_workers: 0
+
+train:
+  steps: 300
+  lr: 2.0e-3
+  weight_decay: 1.0e-4
+  grad_clip: 5.0
+  depth_weight: 0.0      # >0 adds depth cross-entropy for depth-based lifters
+  aux_weight: 0.5        # per-plane loss weight (kind: triplane)
+  seed: 0
+  eval_every: 1
+  keep_ckpts: 3

@@ -22,4 +22,5 @@ class FeedForward(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        """Apply the MLP to ``x`` over its last dimension."""
         return self.net(x)

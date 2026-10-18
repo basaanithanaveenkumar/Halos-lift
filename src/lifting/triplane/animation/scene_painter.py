@@ -37,6 +37,7 @@ class ScenePainter:
 
     # ------------------------------------------------------------------ static scene
     def floor_grid(self, alpha: float = 0.55) -> None:
+        """Draw the ground-plane grid."""
         col = self.theme.rgba(self.theme.grid, alpha)
         (x0, x1), (y0, y1) = self.scene.x_bounds, self.scene.y_bounds
         for x in self.scene.edges(0):
@@ -57,6 +58,7 @@ class ScenePainter:
             self.canvas.line(self.proj.many([(x0, y0, z), (x0, y1, z)]), col)
 
     def bounding_box(self, alpha: float = 0.8) -> None:
+        """Draw the edges of the scene volume."""
         col = self.theme.rgba(self.theme.box, alpha)
         (x0, x1), (y0, y1), (z0, z1) = self.scene.bounds
         top = [(x0, y0, z1), (x1, y0, z1), (x1, y1, z1), (x0, y1, z1), (x0, y0, z1)]
@@ -69,6 +71,7 @@ class ScenePainter:
     def plane_outline(
         self, plane: int, alpha: float = 1.0, label: bool = True, width: int = 2
     ) -> None:
+        """Draw the outline of one TPV plane inside the volume."""
         corners = self._plane_corners(plane)
         color = self.theme.planes[plane]
         self.canvas.polygon(
@@ -154,6 +157,7 @@ class ScenePainter:
             )
 
     def objects(self, alpha: float = 1.0) -> None:
+        """Draw the scene objects as boxes."""
         for obj in sorted(self.scene.objects, key=lambda o: self.proj.depth_key((*o.center, 0.0))):
             self.cuboid(obj.mins, obj.maxs, self.theme.classes[obj.cls], alpha)
 
@@ -172,6 +176,7 @@ class ScenePainter:
 
     # ------------------------------------------------------------------ cameras and rays
     def cameras(self, highlight: Sequence[int] = (), alpha: float = 1.0) -> None:
+        """Draw the camera rig; cameras in ``highlight`` are emphasised."""
         for idx, cam in enumerate(self.rig.cameras):
             color = self.theme.ray if idx in highlight else self.theme.camera
             o = np.asarray(cam.position)
@@ -204,6 +209,7 @@ class ScenePainter:
         alpha: float = 0.9,
         width: int = 1,
     ) -> None:
+        """Draw a camera ray with optional marker."""
         a, b = np.asarray(a, dtype=float), np.asarray(b, dtype=float)
         end = a + (b - a) * max(0.0, min(1.0, t))
         self.canvas.line(
@@ -211,10 +217,13 @@ class ScenePainter:
         )
 
     def dashed(self, a: Point3, b: Point3, color: RGB, alpha: float = 0.8) -> None:
+        """Draw a dashed segment between two 3D points."""
         self.canvas.dashed(self.proj(a), self.proj(b), self.theme.rgba(color, alpha))
 
     def dot(self, p: Point3, color: RGB, radius: float = 3.0, alpha: float = 1.0) -> None:
+        """Draw a dot at a 3D point."""
         self.canvas.circle(self.proj(p), radius, self.theme.rgba(color, alpha))
 
     def label(self, p: Point3, text: str, color: RGB | None = None, size: int = 12) -> None:
+        """Draw a text label at a 3D point."""
         self.canvas.text(self.proj(p), text, size, color or self.theme.text, anchor="mm")

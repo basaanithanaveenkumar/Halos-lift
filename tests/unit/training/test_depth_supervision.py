@@ -42,7 +42,7 @@ def test_hooks_capture_bev_and_triplane_depth_heads(lifter: str) -> None:
     ):
         task = DepthSupervisedTask(base, weight=1.0)
         outputs = task.forward(model, batch)
-        (probs, bins), = outputs[DEPTH_PREDICTIONS]
+        ((probs, bins),) = outputs[DEPTH_PREDICTIONS]
         assert probs.shape[:2] == (batch.images.shape[0] * batch.images.shape[1], bins.num_bins)
         assert bins is next(m for m in model.modules() if hasattr(m, "depth_bins")).depth_bins
         loss = task.loss(outputs, batch)
@@ -68,7 +68,7 @@ def test_depth_loss_teaches_depth() -> None:
     def diagnostics() -> tuple[float, float]:
         model.eval()
         with torch.no_grad():
-            (probs, bins), = task.forward(model, probe)[DEPTH_PREDICTIONS]
+            ((probs, bins),) = task.forward(model, probe)[DEPTH_PREDICTIONS]
         return task.entropy_and_correlation(probs, probe.depth.flatten(0, 1), bins)
 
     entropy0, _ = diagnostics()

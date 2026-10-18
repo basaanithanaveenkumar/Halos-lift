@@ -115,15 +115,18 @@ class DepthSupervisedTask(Task):
         return {**outputs, DEPTH_PREDICTIONS: captured}
 
     def loss(self, outputs: dict, batch: SceneBatch) -> Tensor:
+        """Return the scalar training loss for ``outputs`` against ``batch``."""
         base = self.task.loss(outputs, batch)
         if self.weight == 0:
             return base
         return base + self.weight * self.depth_loss(outputs, batch)
 
     def predict(self, outputs: dict) -> Tensor:
+        """Delegate to the wrapped task."""
         return self.task.predict(outputs)
 
     def target(self, batch: SceneBatch) -> Tensor:
+        """Delegate to the wrapped task."""
         return self.task.target(batch)
 
     # ------------------------------------------------------------------ depth loss
@@ -138,7 +141,9 @@ class DepthSupervisedTask(Task):
         return torch.stack(losses).mean()
 
     @staticmethod
-    def entropy_and_correlation(probs: Tensor, depth: Tensor, bins: DepthBins) -> tuple[float, float]:
+    def entropy_and_correlation(
+        probs: Tensor, depth: Tensor, bins: DepthBins
+    ) -> tuple[float, float]:
         """Diagnostics: mean entropy of the distributions and corr(E[d], true depth).
 
         A uniform distribution has entropy ``ln(num_bins)``; a well-trained head has low entropy
@@ -163,11 +168,12 @@ class DepthSupervisedTask(Task):
                 continue
             bins = self.default_bins
             parts = name.split(".")
-            for i in range(len(parts) - 1, -1, -1):  # walk up: lifter.core.depth_head -> lifter.core
+            for i in range(
+                len(parts) - 1, -1, -1
+            ):  # walk up: lifter.core.depth_head -> lifter.core
                 owner = modules.get(".".join(parts[:i]))
                 if owner is not None and isinstance(getattr(owner, "depth_bins", None), DepthBins):
                     bins = owner.depth_bins
                     break
             heads.append((module, bins))
         return heads
-

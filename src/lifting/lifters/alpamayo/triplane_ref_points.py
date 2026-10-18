@@ -53,15 +53,14 @@ class AlpamayoReferencePoints:
 
     @property
     def plane_shapes(self) -> list[tuple[int, int]]:
+        """Token-grid shape ``(rows, cols)`` of each plane."""
         return TPVPlanes.plane_shapes(self.grid.resolution)
 
     def _axis_centers(self, axis: int, device: torch.device | str | None = None) -> Tensor:
         """Non-linear metric cell centres along ``axis``."""
         return self._params[axis].cell_centers_m(device)
 
-    def anchor_points(
-        self, plane: int, device: torch.device | str | None = None
-    ) -> Tensor:
+    def anchor_points(self, plane: int, device: torch.device | str | None = None) -> Tensor:
         """``(Q_plane, A, 3)`` metric anchors for every query on ``plane``.
 
         The two in-plane axes use non-linear cell centres; anchors along the normal
@@ -78,7 +77,9 @@ class AlpamayoReferencePoints:
         lo, hi = self.grid.bounds[normal]
         num_a = self.num_anchors[plane]
         step = (hi - lo) / num_a
-        coords_normal = torch.arange(num_a, device=device, dtype=torch.float32) * step + lo + step / 2.0
+        coords_normal = (
+            torch.arange(num_a, device=device, dtype=torch.float32) * step + lo + step / 2.0
+        )
 
         # Build mesh: (N_a, N_b, A, 3)
         mesh_ab = torch.stack(
@@ -94,9 +95,7 @@ class AlpamayoReferencePoints:
 
         return pts.reshape(q, num_a, 3)
 
-    def camera_reference_points(
-        self, cameras: Cameras
-    ) -> list[tuple[Tensor, Tensor]]:
+    def camera_reference_points(self, cameras: Cameras) -> list[tuple[Tensor, Tensor]]:
         """Per plane: normalised projections ``(B, N, Q, A, 2)`` and visibility ``(B, N, Q, A)``.
 
         Same interface as :class:`TPVReferencePoints.camera_reference_points`.
@@ -110,9 +109,7 @@ class AlpamayoReferencePoints:
             out.append((cameras.normalize_uv(uv).view(b, n, q, a, 2), valid.view(b, n, q, a)))
         return out
 
-    def hybrid_reference_points(
-        self, device: torch.device | str | None = None
-    ) -> Tensor:
+    def hybrid_reference_points(self, device: torch.device | str | None = None) -> Tensor:
         """``(Q_total, 3, 2)`` cross-view attention reference points.
 
         Each query points at the same 3D location on each of the three planes.

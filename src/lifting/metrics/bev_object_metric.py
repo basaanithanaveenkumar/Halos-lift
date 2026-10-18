@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List
-
 import torch
 from torch import Tensor
 
@@ -25,11 +23,11 @@ def _box_iou_2d(boxes_a: Tensor, boxes_b: Tensor) -> Tensor:
 
     inter_w = (x_max - x_min).clamp(min=0)
     inter_h = (z_max - z_min).clamp(min=0)
-    inter   = inter_w * inter_h  # [N, M]
+    inter = inter_w * inter_h  # [N, M]
 
     area_a = ((boxes_a[:, 2] - boxes_a[:, 0]) * (boxes_a[:, 3] - boxes_a[:, 1])).unsqueeze(1)
     area_b = ((boxes_b[:, 2] - boxes_b[:, 0]) * (boxes_b[:, 3] - boxes_b[:, 1])).unsqueeze(0)
-    union  = area_a + area_b - inter
+    union = area_a + area_b - inter
 
     return inter / union.clamp(min=1e-8)
 
@@ -62,32 +60,34 @@ class BEVObjectMetric:
         self.reset()
 
     def reset(self) -> None:
+        """Clear all accumulated statistics."""
         # Per class: list of (score, is_tp) tuples — collected across the dataset
-        self._all_scores: List[List[float]] = [[] for _ in range(self.num_classes)]
-        self._all_tp:     List[List[int]]   = [[] for _ in range(self.num_classes)]
-        self._n_gt:       List[int]         = [0]  * self.num_classes
+        self._all_scores: list[list[float]] = [[] for _ in range(self.num_classes)]
+        self._all_tp: list[list[int]] = [[] for _ in range(self.num_classes)]
+        self._n_gt: list[int] = [0] * self.num_classes
 
     def update(
         self,
-        pred_boxes:  Tensor,            # [N_pred, 4] x_min z_min x_max z_max
-        pred_scores: Tensor,            # [N_pred]
-        pred_labels: Tensor,            # [N_pred] long
-        gt_boxes:    Tensor,            # [N_gt, 4]
-        gt_labels:   Tensor,            # [N_gt] long
+        pred_boxes: Tensor,  # [N_pred, 4] x_min z_min x_max z_max
+        pred_scores: Tensor,  # [N_pred]
+        pred_labels: Tensor,  # [N_pred] long
+        gt_boxes: Tensor,  # [N_gt, 4]
+        gt_labels: Tensor,  # [N_gt] long
     ) -> None:
-        pred_boxes   = pred_boxes.float().detach().cpu()
-        pred_scores  = pred_scores.float().detach().cpu()
-        pred_labels  = pred_labels.long().detach().cpu()
-        gt_boxes     = gt_boxes.float().detach().cpu()
-        gt_labels    = gt_labels.long().detach().cpu()
+        """Accumulate one batch of predictions and targets."""
+        pred_boxes = pred_boxes.float().detach().cpu()
+        pred_scores = pred_scores.float().detach().cpu()
+        pred_labels = pred_labels.long().detach().cpu()
+        gt_boxes = gt_boxes.float().detach().cpu()
+        gt_labels = gt_labels.long().detach().cpu()
 
         for c in range(self.num_classes):
             p_mask = pred_labels == c
-            g_mask = gt_labels   == c
+            g_mask = gt_labels == c
 
-            p_boxes  = pred_boxes[p_mask]
+            p_boxes = pred_boxes[p_mask]
             p_scores = pred_scores[p_mask]
-            g_boxes  = gt_boxes[g_mask]
+            g_boxes = gt_boxes[g_mask]
 
             n_gt = g_boxes.shape[0]
             self._n_gt[c] += n_gt
@@ -118,6 +118,7 @@ class BEVObjectMetric:
                 self._all_tp[c].append(tp)
 
     def compute(self) -> dict[str, float]:
+        """Return the metric values accumulated since the last :meth:`reset`."""
         aps: list[float] = []
         for c in range(self.num_classes):
             if self._n_gt[c] == 0 or not self._all_scores[c]:
@@ -125,16 +126,16 @@ class BEVObjectMetric:
                 continue
 
             scores = torch.tensor(self._all_scores[c])
-            tps    = torch.tensor(self._all_tp[c], dtype=torch.float32)
-            order  = scores.argsort(descending=True)
-            tps    = tps[order]
-            fps    = 1.0 - tps
+            tps = torch.tensor(self._all_tp[c], dtype=torch.float32)
+            order = scores.argsort(descending=True)
+            tps = tps[order]
+            fps = 1.0 - tps
 
             tp_cum = tps.cumsum(0)
             fp_cum = fps.cumsum(0)
 
             precision = tp_cum / (tp_cum + fp_cum).clamp(min=1e-8)
-            recall    = tp_cum / max(self._n_gt[c], 1)
+            recall = tp_cum / max(self._n_gt[c], 1)
 
             # 11-point interpolation
             ap = 0.0

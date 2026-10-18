@@ -37,6 +37,7 @@ class IsoProjector:
         )
 
     def many(self, points: Sequence[Point3]) -> list[tuple[float, float]]:
+        """Project several 3D points at once."""
         return [self(p) for p in points]
 
     @staticmethod

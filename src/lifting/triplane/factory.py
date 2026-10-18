@@ -5,14 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 from lifting.decoders import BEVDecoder, SegmentationHead
-from lifting.encoders import ImageEncoder, SimpleConvEncoder
+from lifting.encoders import ImageEncoder
 from lifting.geometry import GridSpec
 from lifting.lifters.tpvformer.plane_aux_head import PlaneAuxHead
 from lifting.lifters.tpvformer.tpv_aggregator import TPVAggregator
 from lifting.models.bev_segmentation_model import BEVSegmentationModel
 
 # Reuse the BEV factory's context helpers so BEV and TPV lifters are sized identically.
-from lifting.models.factory import _depth_bins_for, _feature_size
+from lifting.models.factory import EncoderSpec, _depth_bins_for, _feature_size, resolve_encoder
 from lifting.triplane.base import TRIPLANE_LIFTERS, BaseTriplaneLifter
 from lifting.triplane.triplane_occupancy_model import TriplaneOccupancyModel
 
@@ -49,7 +49,7 @@ def build_triplane_model(
     image_size: tuple[int, int] = (48, 96),
     num_cameras: int = 4,
     channels: int = 64,
-    encoder: ImageEncoder | None = None,
+    encoder: EncoderSpec | None = None,
     scale: int = 1,
     aux_heads: bool = False,
     **lifter_kwargs: Any,
@@ -62,7 +62,7 @@ def build_triplane_model(
         out = model(images, cameras, points=lidar)  # planes, voxel_logits, point_logits
     """
     grid = grid or GridSpec()
-    encoder = encoder or SimpleConvEncoder(out_channels=channels, num_levels=2)
+    encoder = resolve_encoder(encoder, channels)
     c = encoder.out_channels
     lift = build_triplane_lifter(lifter, grid, c, image_size, num_cameras, encoder, **lifter_kwargs)
     aggregator = TPVAggregator(grid, c, num_classes, scale=scale)
@@ -77,7 +77,7 @@ def build_triplane_bev_model(
     image_size: tuple[int, int] = (48, 96),
     num_cameras: int = 4,
     channels: int = 64,
-    encoder: ImageEncoder | None = None,
+    encoder: EncoderSpec | None = None,
     **lifter_kwargs: Any,
 ) -> BEVSegmentationModel:
     """BEV segmentation where the BEV map is read off the triplane (``lifter.forward``).
@@ -86,7 +86,7 @@ def build_triplane_bev_model(
     can be benchmarked side by side with the existing trainer / verifier.
     """
     grid = grid or GridSpec()
-    encoder = encoder or SimpleConvEncoder(out_channels=channels, num_levels=2)
+    encoder = resolve_encoder(encoder, channels)
     c = encoder.out_channels
     lift = build_triplane_lifter(lifter, grid, c, image_size, num_cameras, encoder, **lifter_kwargs)
     return BEVSegmentationModel(

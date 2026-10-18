@@ -25,6 +25,7 @@ class BEVAdapterStoryboard(Storyboard):
         return xy, xz, yz
 
     def steps(self) -> list[Step]:
+        """Build the ordered animation steps explaining this lifter."""
         xy, xz, yz = self.guessed_planes()
         return [
             self.step_inputs(),

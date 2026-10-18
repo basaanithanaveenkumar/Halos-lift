@@ -25,15 +25,18 @@ class ToyObject:
 
     @property
     def mins(self) -> np.ndarray:
+        """Lower box corner."""
         return np.array([self.center[0] - self.size[0] / 2, self.center[1] - self.size[1] / 2, 0.0])
 
     @property
     def maxs(self) -> np.ndarray:
+        """Upper box corner."""
         return np.array(
             [self.center[0] + self.size[0] / 2, self.center[1] + self.size[1] / 2, self.size[2]]
         )
 
     def corners(self) -> list[tuple[float, float, float]]:
+        """The eight box corners."""
         lo, hi = self.mins, self.maxs
         return [
             (float(x), float(y), float(z))

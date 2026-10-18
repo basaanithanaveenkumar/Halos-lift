@@ -36,37 +36,45 @@ class BEVIoUMetric:
         self.reset()
 
     def reset(self) -> None:
+        """Clear all accumulated statistics."""
         # Confusion matrix [num_classes, num_classes]
         self._conf = torch.zeros(self.num_classes, self.num_classes, dtype=torch.long)
 
     def update(
         self,
-        pred:   Tensor,  # [B, H, W] long — predicted class per BEV cell
+        pred: Tensor,  # [B, H, W] long — predicted class per BEV cell
         target: Tensor,  # [B, H, W] long — GT class per BEV cell
     ) -> None:
+        """Accumulate one batch of predictions and targets."""
         p = pred.long().detach().cpu().reshape(-1)
         t = target.long().detach().cpu().reshape(-1)
 
         # Mask out ignore_index and out-of-range values
-        valid = (t != self.ignore_index) & (t >= 0) & (t < self.num_classes) & \
-                (p >= 0) & (p < self.num_classes)
+        valid = (
+            (t != self.ignore_index)
+            & (t >= 0)
+            & (t < self.num_classes)
+            & (p >= 0)
+            & (p < self.num_classes)
+        )
         p, t = p[valid], t[valid]
 
         # Accumulate into confusion matrix using linear index trick
         idx = t * self.num_classes + p
-        count = torch.bincount(idx, minlength=self.num_classes ** 2)
+        count = torch.bincount(idx, minlength=self.num_classes**2)
         self._conf += count.reshape(self.num_classes, self.num_classes)
 
     def compute(self) -> dict[str, float]:
+        """Return the metric values accumulated since the last :meth:`reset`."""
         # Per-class IoU = TP / (TP + FP + FN)
         #               = diag / (row_sum + col_sum - diag)
-        tp   = self._conf.diagonal().float()
-        fp   = (self._conf.sum(0) - tp).float()   # col_sum - TP
-        fn   = (self._conf.sum(1) - tp).float()   # row_sum - TP
-        iou  = tp / (tp + fp + fn).clamp(min=1)   # avoid /0 for absent classes
+        tp = self._conf.diagonal().float()
+        fp = (self._conf.sum(0) - tp).float()  # col_sum - TP
+        fn = (self._conf.sum(1) - tp).float()  # row_sum - TP
+        iou = tp / (tp + fp + fn).clamp(min=1)  # avoid /0 for absent classes
 
         # Only average over classes that appear in GT
-        present = (self._conf.sum(1) > 0)          # [num_classes] bool
+        present = self._conf.sum(1) > 0  # [num_classes] bool
         miou = float(iou[present].mean()) if present.any() else 0.0
 
         out: dict[str, float] = {"bev_miou": miou}

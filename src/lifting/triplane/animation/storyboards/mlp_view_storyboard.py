@@ -18,6 +18,7 @@ class MLPViewStoryboard(Storyboard):
     ROWS, COLS = 3, 6
 
     def steps(self) -> list[Step]:
+        """Build the ordered animation steps explaining this lifter."""
         return [
             self.step_inputs(),
             self._step_cells(),

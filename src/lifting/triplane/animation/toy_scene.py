@@ -34,17 +34,21 @@ class ToyScene:
 
     @property
     def bounds(self) -> tuple[tuple[float, float], ...]:
+        """Scene volume bounds per axis."""
         return (self.x_bounds, self.y_bounds, self.z_bounds)
 
     @property
     def cell(self) -> tuple[float, float, float]:
+        """Voxel size ``(dx, dy, dz)``."""
         return tuple((b[1] - b[0]) / n for b, n in zip(self.bounds, self.resolution, strict=True))  # type: ignore[return-value]
 
     def edges(self, axis: int) -> np.ndarray:
+        """Voxel boundary coordinates along ``axis``."""
         lo, hi = self.bounds[axis]
         return np.linspace(lo, hi, self.resolution[axis] + 1)
 
     def centers(self, axis: int) -> np.ndarray:
+        """Voxel centre coordinates along ``axis``."""
         e = self.edges(axis)
         return 0.5 * (e[1:] + e[:-1])
 
@@ -53,6 +57,7 @@ class ToyScene:
         return np.stack(np.meshgrid(*(self.centers(a) for a in range(3)), indexing="ij"), -1)
 
     def voxel_center(self, i: int, j: int, k: int) -> tuple[float, float, float]:
+        """Metric centre of voxel ``(i, j, k)``."""
         return float(self.centers(0)[i]), float(self.centers(1)[j]), float(self.centers(2)[k])
 
     def occupancy(self) -> np.ndarray:
@@ -115,5 +120,6 @@ class ToyScene:
         if plane == 1:
             return x, self.y_bounds[0], z
         return self.x_bounds[0], y, z
+
 
 __all__ = ["ToyObject"]

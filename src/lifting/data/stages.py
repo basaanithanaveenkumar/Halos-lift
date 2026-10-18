@@ -22,9 +22,9 @@ from typing import Any
 class TrainingPhase(StrEnum):
     """High-level training phase for camera-to-BEV lifting models.
 
-      PRETRAIN   — large synthetic scenes, procedural geometry, no downloads
-      MID_TRAIN  — real multi-camera driving data (nuScenes / Waymo)
-      POST_TRAIN — task-specific fine-tuning (occupancy, 3D det., seg.)
+    PRETRAIN   — large synthetic scenes, procedural geometry, no downloads
+    MID_TRAIN  — real multi-camera driving data (nuScenes / Waymo)
+    POST_TRAIN — task-specific fine-tuning (occupancy, 3D det., seg.)
     """
 
     PRETRAIN = "pretrain"
@@ -93,8 +93,7 @@ POST_TRAIN_DATASET_SPECS: dict[str, dict[str, Any]] = {
         "phase": "post_train",
         "hf_path": None,
         "description": (
-            "nuScenes Occ3D occupancy labels — "
-            "200×200×16 voxel grid, 17 semantic classes."
+            "nuScenes Occ3D occupancy labels — 200×200×16 voxel grid, 17 semantic classes."
         ),
         "paper_reference": "Tian et al. (2023) Occ3D",
         "n_classes": 17,

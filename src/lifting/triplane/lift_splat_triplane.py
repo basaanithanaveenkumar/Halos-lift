@@ -46,10 +46,12 @@ class LiftSplatTriplaneLifter(BaseTriplaneLifter):
 
     @property
     def level(self) -> int:
+        """Index of the feature-pyramid level the wrapped BEV lifter reads."""
         return self.core.level
 
     @property
     def depth_bins(self) -> DepthBins:
+        """The depth discretisation of the wrapped depth lifter."""
         return self.core.depth_bins
 
     def depth_and_context(self, features: Sequence[Tensor]) -> tuple[Tensor, Tensor]:
@@ -66,4 +68,13 @@ class LiftSplatTriplaneLifter(BaseTriplaneLifter):
         return self.core.splat(depth, context, cameras.scaled_to(h, w))
 
     def lift_planes(self, features: Sequence[Tensor], cameras: Cameras) -> TPVPlanes:
+        """Lift per-camera features into the three TPV planes.
+
+        Args:
+            features: feature pyramid from the image encoder.
+            cameras: the rig geometry.
+
+        Returns:
+            The ``xy`` / ``xz`` / ``yz`` feature planes.
+        """
         return self.to_planes(self.lift_voxels(features, cameras))

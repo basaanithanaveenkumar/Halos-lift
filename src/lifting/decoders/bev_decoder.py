@@ -33,6 +33,7 @@ class BEVDecoder(nn.Module):
         return F.interpolate(x, size=ref.shape[-2:], mode="bilinear", align_corners=False)
 
     def forward(self, bev: Tensor) -> Tensor:
+        """Decode BEV features ``(B, C, X, Y)`` with a small U-Net."""
         s0 = self.enc0(bev)
         s1 = self.enc1(s0)
         s2 = self.enc2(s1)

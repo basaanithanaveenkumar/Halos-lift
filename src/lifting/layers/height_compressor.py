@@ -18,5 +18,6 @@ class HeightCompressor(nn.Module):
         )
 
     def forward(self, volume: Tensor) -> Tensor:
+        """Fold the height axis into channels: ``(B, C, X, Y, Z)`` -> ``(B, C', X, Y)``."""
         b, c, x, y, z = volume.shape
         return self.conv(volume.permute(0, 1, 4, 2, 3).reshape(b, c * z, x, y))

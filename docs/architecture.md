@@ -311,3 +311,95 @@ classDiagram
   TriplaneOccupancyModel o-- BaseTriplaneLifter
 ```
 
+
+---
+
+## 7. Core classes, registries and configuration
+
+Every user-selectable component is looked up by name in a `Registry` (`lifting.registry`);
+adding one means registering a class, never editing an `if/elif` chain.
+
+```mermaid
+classDiagram
+  class Registry~T~ {
+    +register(name, force)
+    +register_module(name, force, module)
+    +get(name)
+    +build(spec, **kwargs) T
+    +names() list
+  }
+  class ImageEncoder {
+    <<abstract>>
+    +out_channels
+    +strides
+    +extract(images) list
+  }
+  class BaseLifter {
+    <<abstract>>
+    +forward(features, cameras) Tensor
+  }
+  class Task {
+    <<abstract>>
+    +forward(model, batch) dict
+    +loss(outputs, batch) Tensor
+    +predict(outputs) Tensor
+    +target(batch) Tensor
+  }
+  class ConfigLoader {
+    +load(path, overrides) dict
+    +merge(base, child) dict
+    +apply_overrides(config, overrides) dict
+  }
+  class TrainConfig {
+    <<dataclass>>
+    +from_mapping(config) TrainConfig
+    +as_defaults() dict
+  }
+  class BEVSegmentationModel
+  class Trainer
+  Registry <.. ImageEncoder : ENCODERS
+  Registry <.. BaseLifter : LIFTERS / TRIPLANE_LIFTERS
+  Registry <.. Task : TASKS
+  BEVSegmentationModel o-- ImageEncoder
+  BEVSegmentationModel o-- BaseLifter
+  Trainer o-- Task
+  ConfigLoader ..> TrainConfig : validated at the boundary
+```
+
+### Main path: `lifting-train --config`
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant CLI as train_cli
+  participant CL as ConfigLoader
+  participant TC as TrainConfig
+  participant F as build_bev_model
+  participant R as ENCODERS / LIFTERS / TASKS
+  participant T as DistributedTrainer
+  User->>CLI: lifting-train --config c.yaml --cfg-options train.lr=1e-3
+  CLI->>CL: load(c.yaml, overrides)
+  CL-->>CLI: merged dict (bases resolved, cycles rejected)
+  CLI->>TC: from_mapping(dict)
+  TC-->>CLI: typed settings (InvalidConfigError on bad keys)
+  CLI->>F: build_bev_model(lifter, encoder, ...)
+  F->>R: build encoder and lifter by name
+  R-->>F: modules
+  F-->>CLI: model
+  CLI->>R: TASKS.build("bev_segmentation")
+  CLI->>T: fit_loader(loader, steps)
+  loop every step
+    T->>T: task.forward, task.loss, backward, optimiser step
+  end
+  T-->>CLI: metrics (loguru logs at milestones)
+```
+
+Configuration files use `_base_: path` (or the older `inherits:`), child dicts deep-merge over
+their bases, `_delete_: true` replaces a dict, and `--cfg-options a.b=c` overrides single keys.
+YAML needs the `config` extra (`pyyaml`); JSON configs need nothing.
+
+### Versions and sources
+
+PyTorch >= 2.1 (`F.grid_sample` with `align_corners=False`, `torch.autograd.gradcheck`),
+loguru >= 0.7 (<https://loguru.readthedocs.io/>), PyYAML >= 6.0 (`yaml.safe_load`). Registry
+semantics follow the mmengine registry (<https://mmengine.readthedocs.io/en/latest/advanced_tutorials/registry.html>).

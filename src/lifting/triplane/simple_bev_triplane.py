@@ -35,6 +35,7 @@ class SimpleBEVTriplaneLifter(BaseTriplaneLifter):
 
     @property
     def level(self) -> int:
+        """Index of the feature-pyramid level the wrapped BEV lifter reads."""
         return self.core.level
 
     def lift_voxels(self, features: Sequence[Tensor], cameras: Cameras) -> Tensor:
@@ -42,4 +43,13 @@ class SimpleBEVTriplaneLifter(BaseTriplaneLifter):
         return self.core.unproject(features[self.level], cameras)
 
     def lift_planes(self, features: Sequence[Tensor], cameras: Cameras) -> TPVPlanes:
+        """Lift per-camera features into the three TPV planes.
+
+        Args:
+            features: feature pyramid from the image encoder.
+            cameras: the rig geometry.
+
+        Returns:
+            The ``xy`` / ``xz`` / ``yz`` feature planes.
+        """
         return self.to_planes(self.lift_voxels(features, cameras))

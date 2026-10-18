@@ -32,26 +32,32 @@ class GridSpec:
     # ------------------------------------------------------------------ properties
     @property
     def bounds(self) -> tuple[tuple[float, float], ...]:
+        """``((x_min, x_max), (y_min, y_max), (z_min, z_max))`` in metres."""
         return (self.x_bounds, self.y_bounds, self.z_bounds)
 
     @property
     def mins(self) -> tuple[float, float, float]:
+        """Lower corner ``(x_min, y_min, z_min)`` of the grid in metres."""
         return tuple(b[0] for b in self.bounds)  # type: ignore[return-value]
 
     @property
     def extents(self) -> tuple[float, float, float]:
+        """Edge lengths ``(x, y, z)`` of the grid in metres."""
         return tuple(b[1] - b[0] for b in self.bounds)  # type: ignore[return-value]
 
     @property
     def voxel_size(self) -> tuple[float, float, float]:
+        """Voxel edge lengths ``(dx, dy, dz)`` in metres."""
         return tuple(e / n for e, n in zip(self.extents, self.resolution, strict=True))  # type: ignore[return-value]
 
     @property
     def bev_shape(self) -> tuple[int, int]:
+        """BEV map shape ``(X, Y)``."""
         return self.resolution[0], self.resolution[1]
 
     @property
     def num_cells_bev(self) -> int:
+        """Number of BEV cells ``X * Y``."""
         return self.resolution[0] * self.resolution[1]
 
     # ------------------------------------------------------------------ coordinates
@@ -129,4 +135,5 @@ class GridSpec:
         return flat.clamp(0, ny * nz * self.resolution[0] - 1), valid
 
     def with_resolution(self, resolution: tuple[int, int, int]) -> GridSpec:
+        """Return a copy of the grid with a different ``(X, Y, Z)`` resolution."""
         return GridSpec(self.x_bounds, self.y_bounds, self.z_bounds, resolution)

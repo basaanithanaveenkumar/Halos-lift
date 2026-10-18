@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 import torch
+from loguru import logger
 
 from lifting.verification import (
     GEOMETRIC_LIFTERS,
@@ -16,6 +17,7 @@ from lifting.verification import (
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse ``lifting-verify`` arguments (``sys.argv[1:]`` when ``argv`` is ``None``)."""
     p = argparse.ArgumentParser(description="Verify lifting techniques on synthetic 3D scenes.")
     p.add_argument(
         "--lifters", default=",".join(GEOMETRIC_LIFTERS), help="comma separated lifter names"
@@ -35,6 +37,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """``lifting-verify`` entry point; returns 0 when every lifter passes, else 1."""
     args = parse_args(argv)
     config = VerificationConfig(
         lifters=tuple(n for n in args.lifters.split(",") if n),
@@ -50,9 +53,9 @@ def main(argv: list[str] | None = None) -> int:
     report = verifier.run()
     if report.passed:
         path = VerificationGifRenderer().save(report, verifier.visualisation_batch, args.gif)
-        print(f"verification passed - animation written to {path}")
+        logger.info("verification passed - animation written to {}", path)
     else:
-        print("verification FAILED - no GIF written")
+        logger.error("verification FAILED - no GIF written")
     if args.json:
         args.json.write_text(report.to_json())
     return 0 if report.passed else 1

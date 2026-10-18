@@ -18,6 +18,7 @@ class TPVFormerStoryboard(QueryStoryboard):
     reference = "Huang et al., TPVFormer (CVPR 2023)  ·  lifting.triplane.TPVFormerTriplaneLifter"
 
     def steps(self) -> list[Step]:
+        """Build the ordered animation steps explaining this lifter."""
         return [
             self.step_inputs(),
             self.step_queries(

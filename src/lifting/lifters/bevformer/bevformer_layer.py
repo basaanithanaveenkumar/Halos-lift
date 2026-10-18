@@ -42,6 +42,7 @@ class BEVFormerLayer(nn.Module):
         reference_points_cam: Tensor,
         visible: Tensor,
     ) -> Tensor:
+        """Run self-attention, image cross-attention and the feed-forward network on the queries."""
         q = self.norms[0](
             query + self.self_attn(query + query_pos, query, bev_reference, [bev_shape])
         )

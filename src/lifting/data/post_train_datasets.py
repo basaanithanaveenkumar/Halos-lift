@@ -39,9 +39,15 @@ def build_post_train_dataset(name: str, **kwargs) -> Dataset:
     }
     if name not in _builders:
         raise InvalidConfigError(
-            f"Unknown post-train dataset {name!r}. "
-            f"Choose from: {sorted(_builders)}"
+            f"Unknown post-train dataset {name!r}. Choose from: {sorted(_builders)}"
         )
     return _builders[name](**kwargs)
 
-__all__ = ["NuScenesMapSegConfig", "NuScenesMapSegDataset", "NuScenesOccupancyConfig", "NuScenesOccupancyDataset", "build_post_train_dataset"]
+
+__all__ = [
+    "NuScenesMapSegConfig",
+    "NuScenesMapSegDataset",
+    "NuScenesOccupancyConfig",
+    "NuScenesOccupancyDataset",
+    "build_post_train_dataset",
+]

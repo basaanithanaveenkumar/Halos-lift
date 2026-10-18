@@ -20,6 +20,7 @@ class TIIMStoryboard(Storyboard):
     RANGE = np.arange(0.75, 6.0, 0.5)
 
     def steps(self) -> list[Step]:
+        """Build the ordered animation steps explaining this lifter."""
         voxels = self.facts.depth_consistent()
         return [
             self.step_inputs(),

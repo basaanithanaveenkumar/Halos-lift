@@ -54,10 +54,12 @@ class CameraImages:
         return x, y, x + self.thumb[0], y + self.thumb[1]
 
     def to_screen(self, cam: int, u: float, v: float) -> tuple[float, float]:
+        """Map pixel ``(u, v)`` of camera ``cam`` to canvas coordinates."""
         x0, y0, x1, y1 = self.box(cam)
         return x0 + u * (x1 - x0), y0 + v * (y1 - y0)
 
     def draw(self, canvas: Canvas, highlight: tuple[int, ...] = ()) -> None:
+        """Draw every camera image; cameras in ``highlight`` get an emphasised frame."""
         canvas.text((self.origin[0], self.origin[1] - 16), "camera images", 13, self.theme.muted)
         for cam, img in enumerate(self.thumbnails):
             x0, y0, x1, y1 = self.box(cam)
@@ -69,6 +71,7 @@ class CameraImages:
             )
 
     def highlight(self, canvas: Canvas, cam: int) -> None:
+        """Draw an emphasised frame around camera ``cam``."""
         x0, y0, x1, y1 = self.box(cam)
         canvas.rect((x0 - 2, y0 - 2, x1 + 1, y1 + 1), None, self.theme.ray, 2)
 
@@ -82,6 +85,7 @@ class CameraImages:
         radius: float = 3.0,
         alpha: float = 1.0,
     ) -> None:
+        """Mark pixel ``(u, v)`` of camera ``cam``."""
         canvas.circle(
             self.to_screen(cam, u, v),
             radius,
@@ -90,6 +94,7 @@ class CameraImages:
         )
 
     def column(self, canvas: Canvas, cam: int, u: float, color: RGB, alpha: float = 0.5) -> None:
+        """Shade the image column ``u`` of camera ``cam``."""
         x0, y0, x1, y1 = self.box(cam)
         x = x0 + u * (x1 - x0)
         canvas.rect(

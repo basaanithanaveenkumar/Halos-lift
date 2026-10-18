@@ -48,6 +48,7 @@ class Trainer:
         self.history = TrainingHistory()
 
     def train_step(self, batch: SceneBatch) -> float:
+        """Run one optimiser step on ``batch`` and return the scalar loss."""
         self.model.train()
         batch = batch.to(self.device)
         loss = self.task.loss(self.task.forward(self.model, batch), batch)
@@ -105,6 +106,7 @@ class Trainer:
 
     @torch.no_grad()
     def predict(self, batch: SceneBatch) -> torch.Tensor:
+        """Predict integer classes for batch with the model in eval mode, without gradients."""
         self.model.eval()
         batch = batch.to(self.device)
         return self.task.predict(self.task.forward(self.model, batch))
@@ -118,5 +120,6 @@ def _cycle(iterable: Iterable[SceneBatch]) -> Iterator[SceneBatch]:
             yield item
         if not yielded:
             raise EmptyDataError("cannot train on an empty iterable of batches")
+
 
 __all__ = ["TrainingHistory"]

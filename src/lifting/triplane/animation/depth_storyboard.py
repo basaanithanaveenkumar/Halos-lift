@@ -31,6 +31,7 @@ class DepthStoryboard(Storyboard):
         return out
 
     def depth_probs(self, hit_depth: float) -> np.ndarray:
+        """Depth distribution a depth head would predict for a surface at ``hit_depth``."""
         logits = -0.5 * ((DEPTH_BINS - hit_depth) / self.SIGMA) ** 2
         p = np.exp(logits - logits.max())
         return p / p.sum()
@@ -62,6 +63,7 @@ class DepthStoryboard(Storyboard):
             ctx.painter.dot(pt, color, 1.2 + 6 * math.sqrt(p), 0.25 + 0.75 * min(1.0, 3 * p))
 
     def step_depth_distribution(self) -> Step:
+        """Step showing the per-pixel depth distribution along each probed ray."""
         probes = [s for s in self.pixel_samples(stride=9)][:8]
 
         def over(ctx: FrameContext, t: float) -> None:

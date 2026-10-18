@@ -27,6 +27,7 @@ class TPVReferencePoints:
 
     @property
     def plane_shapes(self) -> list[tuple[int, int]]:
+        """Token-grid shape ``(rows, cols)`` of each plane."""
         return TPVPlanes.plane_shapes(self.grid.resolution)
 
     def anchor_points(self, plane: int, device: torch.device | str | None = None) -> Tensor:

@@ -74,6 +74,15 @@ class LiftSplatLifter(BaseLifter):
         return pooled.view(b, nx, ny, nz, c).permute(0, 4, 1, 2, 3)
 
     def forward(self, features: Sequence[Tensor], cameras: Cameras) -> Tensor:
+        """Lift per-camera features into a BEV map.
+
+        Args:
+            features: feature pyramid, each level ``(B*N, C, h, w)`` or ``(B, N, C, h, w)`` as the encoder returns it.
+            cameras: the rig geometry.
+
+        Returns:
+            BEV features ``(B, C, X, Y)``.
+        """
         feats = features[self.level]
         b, n, _, h, w = feats.shape
         depth, context = self.depth_head(feats.flatten(0, 1))

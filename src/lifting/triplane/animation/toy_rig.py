@@ -55,6 +55,7 @@ class ToyRig:
         return np.asarray(c.position, dtype=float), d
 
     def point_at(self, cam: int, u: float, v: float, depth: float) -> tuple[float, float, float]:
+        """World point seen at pixel ``(u, v)`` of camera ``cam`` at ``depth``."""
         o, d = self.ray(cam, u, v)
         return tuple(float(x) for x in o + depth * d)  # type: ignore[return-value]
 
@@ -97,5 +98,6 @@ def _slab(o: np.ndarray, d: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> float
         if t0 > t1:
             return None
     return t0
+
 
 __all__ = ["ToyCamera"]

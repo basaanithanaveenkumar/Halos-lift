@@ -74,6 +74,15 @@ class BEVFormerTriplaneLifter(BaseTriplaneLifter):
         self.projection = PlaneProjection(in_channels, out_channels)
 
     def lift_planes(self, features: Sequence[Tensor], cameras: Cameras) -> TPVPlanes:
+        """Lift per-camera features into the three TPV planes.
+
+        Args:
+            features: feature pyramid from the image encoder.
+            cameras: the rig geometry.
+
+        Returns:
+            The ``xy`` / ``xz`` / ``yz`` feature planes.
+        """
         values, shapes = flatten_pyramid(features[: self.num_levels], self.level_embed)
         camera_reference = self.references.camera_reference_points(cameras)
         planes = [

@@ -51,6 +51,7 @@ class PlanePanel:
         return x0 + col * cw, y0 + row * ch, x0 + (col + 1) * cw, y0 + (row + 1) * ch
 
     def draw(self, canvas: Canvas, title: str = "output triplane") -> None:
+        """Draw the three planes with their axes and a title."""
         canvas.text((self.origin[0], self.origin[1] - 4), title, 13, self.theme.muted)
         names = ("xy = BEV  (x↑ y←)", "xz  (x→ z↑)", "yz  (y→ z↑)")
         for plane, box in enumerate(self._boxes()):
@@ -74,12 +75,14 @@ class PlanePanel:
             )
 
     def grid_lines(self, canvas: Canvas, plane: int, alpha: float = 0.35) -> None:
+        """Draw the cell grid of one plane."""
         h, w = self._shape(plane)
         color = self.theme.rgba(self.theme.planes[plane], alpha)
         for a, b in np.ndindex(h, w):
             canvas.rect(self.cell_box(plane, a, b), None, color)
 
     def queries(self, canvas: Canvas, plane: int, alpha: float = 1.0) -> None:
+        """Draw the query cell centres of one plane."""
         h, w = self._shape(plane)
         for a, b in np.ndindex(h, w):
             x0, y0, x1, y1 = self.cell_box(plane, a, b)
@@ -90,4 +93,5 @@ class PlanePanel:
             )
 
     def highlight(self, canvas: Canvas, plane: int, a: int, b: int) -> None:
+        """Highlight cell ``(a, b)`` of one plane."""
         canvas.rect(self.cell_box(plane, a, b), None, self.theme.ray, 2)

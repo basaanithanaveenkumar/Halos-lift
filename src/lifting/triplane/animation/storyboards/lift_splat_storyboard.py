@@ -18,6 +18,7 @@ class LiftSplatStoryboard(DepthStoryboard):
     reference = "Philion & Fidler (ECCV 2020)  ·  lifting.triplane.LiftSplatTriplaneLifter"
 
     def steps(self) -> list[Step]:
+        """Build the ordered animation steps explaining this lifter."""
         return [
             self.step_inputs(),
             self.step_depth_distribution(),

@@ -38,6 +38,7 @@ class MSDeformableAttention3D(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
+        """Initialise offsets, weights and projections (see :mod:`lifting.attention.offset_init`)."""
         init_sampling_offsets(
             self.sampling_offsets, self.num_heads, self.num_levels, self.num_points, dims=3
         )

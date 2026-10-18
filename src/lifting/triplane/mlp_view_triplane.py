@@ -57,6 +57,15 @@ class MLPViewTriplaneLifter(BaseTriplaneLifter):
         )
 
     def lift_planes(self, features: Sequence[Tensor], cameras: Cameras) -> TPVPlanes:
+        """Lift per-camera features into the three TPV planes.
+
+        Args:
+            features: feature pyramid from the image encoder.
+            cameras: the rig geometry.
+
+        Returns:
+            The ``xy`` / ``xz`` / ``yz`` feature planes.
+        """
         feats = features[self.level]  # B N C h w
         b, n, c = feats.shape[:3]
         if n != self.num_cameras:

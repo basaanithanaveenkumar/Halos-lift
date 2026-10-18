@@ -20,6 +20,7 @@ class SimpleBEVStoryboard(Storyboard):
     PROBES = ((6, 5, 1), (2, 1, 2), (5, 2, 0), (1, 6, 3))
 
     def steps(self) -> list[Step]:
+        """Build the ordered animation steps explaining this lifter."""
         return [
             self.step_inputs(),
             self.step_voxel_grid(

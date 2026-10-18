@@ -26,4 +26,5 @@ class ResidualBlock(nn.Module):
         self.act = nn.ReLU(inplace=True)
 
     def forward(self, x: Tensor) -> Tensor:
+        """Apply two convolutions plus the (projected) shortcut."""
         return self.act(self.conv2(self.conv1(x)) + self.shortcut(x))

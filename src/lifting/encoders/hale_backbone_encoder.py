@@ -93,13 +93,13 @@ class HaleBackboneEncoder(ImageEncoder):
 
     def __init__(
         self,
-        backbone_name:       str   = "convnext_base",
-        img_size:            int   = 224,
-        out_channels:        int   = 128,
-        num_levels:          int   = 3,
-        freeze_encoder:      bool  = False,
-        freeze_up_to_stage:  int   = -1,
-        drop_rate:           float = 0.0,
+        backbone_name: str = "convnext_base",
+        img_size: int = 224,
+        out_channels: int = 128,
+        num_levels: int = 3,
+        freeze_encoder: bool = False,
+        freeze_up_to_stage: int = -1,
+        drop_rate: float = 0.0,
     ) -> None:
         super().__init__()
 
@@ -135,8 +135,8 @@ class HaleBackboneEncoder(ImageEncoder):
 
         # Use the *last* num_levels levels (coarsest strides — most semantically rich)
         self._selected_dims = backbone_feature_dims[-num_levels:]
-        self._n_levels      = num_levels
-        self._n_available   = n_available
+        self._n_levels = num_levels
+        self._n_available = n_available
 
         # ── FPN neck to unify channel widths ─────────────────────────────────
         # If backbone has a single scale (ViT), replicate it to num_levels
@@ -146,13 +146,15 @@ class HaleBackboneEncoder(ImageEncoder):
         if self._is_single_scale:
             # ViT produces one scale; we map it to num_levels via 1×1 convs
             single_dim = backbone_feature_dims[0]
-            self.scale_adapters = nn.ModuleList([
-                nn.Sequential(
-                    nn.Conv2d(single_dim, out_channels, kernel_size=1, bias=False),
-                    nn.BatchNorm2d(out_channels),
-                )
-                for _ in range(num_levels)
-            ])
+            self.scale_adapters = nn.ModuleList(
+                [
+                    nn.Sequential(
+                        nn.Conv2d(single_dim, out_channels, kernel_size=1, bias=False),
+                        nn.BatchNorm2d(out_channels),
+                    )
+                    for _ in range(num_levels)
+                ]
+            )
         else:
             # Multi-scale backbone → FPN merges lateral connections
             self.neck = FPN(self._selected_dims, out_channels)
@@ -186,16 +188,19 @@ class HaleBackboneEncoder(ImageEncoder):
                 if i == 0:
                     feat = single_feat
                 else:
-                    scale = 0.5 ** i
+                    scale = 0.5**i
                     feat = F.interpolate(
-                        single_feat, scale_factor=scale, mode="bilinear",
-                        align_corners=False, recompute_scale_factor=False,
+                        single_feat,
+                        scale_factor=scale,
+                        mode="bilinear",
+                        align_corners=False,
+                        recompute_scale_factor=False,
                     )
                 levels.append(adapter(feat))
             return levels
         else:
             # Multi-scale backbone: select the last num_levels feature maps.
-            selected = out.feature_maps[-self._n_levels:]
+            selected = out.feature_maps[-self._n_levels :]
             return self.neck(selected)
 
     # ── Utilities ─────────────────────────────────────────────────────────────
@@ -219,12 +224,12 @@ class HaleBackboneEncoder(ImageEncoder):
 
 
 def build_hale_backbone_encoder(
-    backbone_name:      str   = "convnext_base",
-    img_size:           int   = 224,
-    out_channels:       int   = 128,
-    num_levels:         int   = 3,
-    freeze_encoder:     bool  = False,
-    freeze_up_to_stage: int   = -1,
+    backbone_name: str = "convnext_base",
+    img_size: int = 224,
+    out_channels: int = 128,
+    num_levels: int = 3,
+    freeze_encoder: bool = False,
+    freeze_up_to_stage: int = -1,
 ) -> HaleBackboneEncoder:
     """Factory function for use in Halos-lift model builders.
 

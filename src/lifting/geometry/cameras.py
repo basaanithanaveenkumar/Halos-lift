@@ -35,23 +35,30 @@ class Cameras:
 
     def __post_init__(self) -> None:
         if self.intrinsics.shape[-2:] != (3, 3):
-            raise CameraGeometryError(f"intrinsics must be (B, N, 3, 3), got {tuple(self.intrinsics.shape)}")
+            raise CameraGeometryError(
+                f"intrinsics must be (B, N, 3, 3), got {tuple(self.intrinsics.shape)}"
+            )
         if self.cam_to_ego.shape[-2:] != (4, 4):
-            raise CameraGeometryError(f"cam_to_ego must be (B, N, 4, 4), got {tuple(self.cam_to_ego.shape)}")
+            raise CameraGeometryError(
+                f"cam_to_ego must be (B, N, 4, 4), got {tuple(self.cam_to_ego.shape)}"
+            )
         if self.intrinsics.shape[:2] != self.cam_to_ego.shape[:2]:
             raise CameraGeometryError("intrinsics and cam_to_ego disagree on (B, N)")
 
     # ------------------------------------------------------------------ properties
     @property
     def batch_size(self) -> int:
+        """Number of scenes ``B`` in the batch."""
         return self.intrinsics.shape[0]
 
     @property
     def num_cameras(self) -> int:
+        """Number of cameras ``N`` per scene."""
         return self.intrinsics.shape[1]
 
     @property
     def device(self) -> torch.device:
+        """Device the camera tensors live on."""
         return self.intrinsics.device
 
     @property
@@ -68,6 +75,7 @@ class Cameras:
 
     # ------------------------------------------------------------------ transforms
     def to(self, device: torch.device | str) -> Cameras:
+        """Return a copy of the cameras on ``device``."""
         return Cameras(self.intrinsics.to(device), self.cam_to_ego.to(device), self.image_size)
 
     def scaled_to(self, height: int, width: int) -> Cameras:

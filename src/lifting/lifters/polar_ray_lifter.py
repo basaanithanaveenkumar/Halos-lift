@@ -87,5 +87,14 @@ class PolarRayLifter(BaseLifter):
         return masked_camera_mean(sampled, valid).view(b, c, nx, ny)
 
     def forward(self, features: Sequence[Tensor], cameras: Cameras) -> Tensor:
+        """Lift per-camera features into a BEV map.
+
+        Args:
+            features: feature pyramid, each level ``(B*N, C, h, w)`` or ``(B, N, C, h, w)`` as the encoder returns it.
+            cameras: the rig geometry.
+
+        Returns:
+            BEV features ``(B, C, X, Y)``.
+        """
         polar = self.image_to_polar(features[self.level])
         return self.output(self.polar_to_bev(polar, cameras))

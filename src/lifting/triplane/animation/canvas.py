@@ -19,6 +19,7 @@ _ASCII = str.maketrans({"→": "->", "←": "<-", "↑": "^", "↓": "v", "⊗":
 
 
 def ascii_safe(text: str) -> str:
+    """Replace characters the bundled bitmap fonts cannot draw with ASCII look-alikes."""
     return text.translate(_ASCII)
 
 
@@ -45,12 +46,14 @@ class Canvas:
 
     @property
     def size(self) -> tuple[int, int]:
+        """Canvas ``(width, height)`` in pixels."""
         return self.image.size
 
     # ------------------------------------------------------------------ text
     def text(
         self, xy: Point, text: str, size: int = 13, color: Color | None = None, anchor: str = "la"
     ) -> None:
+        """Draw one line of text."""
         self.draw.text(
             xy, ascii_safe(text), fill=color or self.theme.text, font=_font(size), anchor=anchor
         )
@@ -58,18 +61,22 @@ class Canvas:
     def multiline(
         self, xy: Point, text: str, size: int = 13, color: Color | None = None, spacing: int = 4
     ) -> None:
+        """Draw word-wrapped text and return the height it used."""
         self.draw.multiline_text(
             xy, ascii_safe(text), fill=color or self.theme.text, font=_font(size), spacing=spacing
         )
 
     def text_width(self, text: str, size: int = 13) -> float:
+        """Rendered width of ``text`` in pixels at ``size``."""
         return self.draw.textlength(ascii_safe(text), font=_font(size))
 
     # ------------------------------------------------------------------ shapes
     def line(self, points: Sequence[Point], color: Color, width: int = 1) -> None:
+        """Draw a polyline through ``points``."""
         self.draw.line([tuple(p) for p in points], fill=color, width=width)
 
     def dashed(self, p0: Point, p1: Point, color: Color, width: int = 1, dash: float = 5) -> None:
+        """Draw a dashed segment from ``p0`` to ``p1``."""
         length = math.dist(p0, p1)
         if length < 1e-6:
             return
@@ -92,9 +99,11 @@ class Canvas:
         outline: Color | None = None,
         width: int = 1,
     ) -> None:
+        """Draw a filled and/or outlined polygon."""
         self.draw.polygon([tuple(p) for p in points], fill=fill, outline=outline, width=width)
 
     def circle(self, c: Point, r: float, fill: Color | None, outline: Color | None = None) -> None:
+        """Draw a circle of radius ``r`` centred at ``c``."""
         self.draw.ellipse([c[0] - r, c[1] - r, c[0] + r, c[1] + r], fill=fill, outline=outline)
 
     def rect(
@@ -105,12 +114,14 @@ class Canvas:
         width: int = 1,
         radius: int = 0,
     ) -> None:
+        """Draw a rectangle, optionally filled, outlined and rounded."""
         if radius:
             self.draw.rounded_rectangle(list(box), radius, fill=fill, outline=outline, width=width)
         else:
             self.draw.rectangle(list(box), fill=fill, outline=outline, width=width)
 
     def arrow(self, p0: Point, p1: Point, color: Color, width: int = 2, head: float = 8) -> None:
+        """Draw an arrow from ``p0`` to ``p1`` with a triangular head."""
         self.line([p0, p1], color, width)
         ang = math.atan2(p1[1] - p0[1], p1[0] - p0[0])
         left = (p1[0] - head * math.cos(ang - 0.45), p1[1] - head * math.sin(ang - 0.45))
@@ -118,6 +129,7 @@ class Canvas:
         self.polygon([p1, left, right], fill=color)
 
     def paste(self, image: Image.Image, xy: tuple[int, int]) -> None:
+        """Paste ``image`` with its top-left corner at ``xy``."""
         self.image.paste(image, xy)
 
     def wrap(self, text: str, max_width: float, size: int = 13) -> str:

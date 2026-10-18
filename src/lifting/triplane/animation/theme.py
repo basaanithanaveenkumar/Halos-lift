@@ -37,6 +37,7 @@ class Theme:
 
     @property
     def planes(self) -> tuple[RGB, RGB, RGB]:
+        """Colours of the ``xy``, ``xz`` and ``yz`` planes."""
         return self.plane_xy, self.plane_xz, self.plane_yz
 
     @staticmethod

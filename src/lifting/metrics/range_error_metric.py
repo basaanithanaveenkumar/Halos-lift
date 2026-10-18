@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from torch import Tensor
 
 
@@ -36,15 +34,17 @@ class RangeErrorMetric:
         self.reset()
 
     def reset(self) -> None:
+        """Clear all accumulated statistics."""
         self._abs_rel_sum = [0.0] * self.n_bins
-        self._n_per_bin   = [0]   * self.n_bins
+        self._n_per_bin = [0] * self.n_bins
 
     def update(
         self,
-        pred_depth: Tensor,              # any shape
-        gt_depth:   Tensor,              # same shape
-        mask:       Optional[Tensor] = None,
+        pred_depth: Tensor,  # any shape
+        gt_depth: Tensor,  # same shape
+        mask: Tensor | None = None,
     ) -> None:
+        """Accumulate one batch of predictions and targets."""
         p = pred_depth.float().detach().cpu().reshape(-1)
         g = gt_depth.float().detach().cpu().reshape(-1)
 
@@ -62,14 +62,15 @@ class RangeErrorMetric:
             if n == 0:
                 continue
             self._abs_rel_sum[i] += float(abs_rel[bin_mask].sum())
-            self._n_per_bin[i]   += n
+            self._n_per_bin[i] += n
 
     def compute(self) -> dict[str, float]:
+        """Return the metric values accumulated since the last :meth:`reset`."""
         out: dict[str, float] = {}
         for i in range(self.n_bins):
             lo = self.range_bins[i]
             hi = self.range_bins[i + 1]
-            n  = self._n_per_bin[i]
+            n = self._n_per_bin[i]
             key = f"range_abs_rel_{lo:.0f}_{hi:.0f}m"
             out[key] = self._abs_rel_sum[i] / max(n, 1)
         return out

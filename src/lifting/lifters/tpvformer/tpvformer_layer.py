@@ -49,6 +49,7 @@ class TPVFormerLayer(nn.Module):
         spatial_shapes: Sequence[tuple[int, int]],
         camera_reference: Sequence[tuple[Tensor, Tensor]],
     ) -> Tensor:
+        """Run cross-view hybrid attention, image cross-attention and the feed-forward network on the planes."""
         q = self.norms[0](
             query + self.hybrid_attn(query, query_pos, plane_shapes, hybrid_reference)
         )

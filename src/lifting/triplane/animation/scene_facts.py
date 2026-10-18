@@ -35,10 +35,12 @@ class SceneFacts:
 
     @cached_property
     def occupancy(self) -> np.ndarray:
+        """Voxel occupancy of the toy scene."""
         return self.scene.occupancy()
 
     @cached_property
     def plane_labels(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Per-plane class labels collapsed from the occupancy."""
         return self.scene.plane_labels(self.occupancy)
 
     @cached_property

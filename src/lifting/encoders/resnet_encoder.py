@@ -39,7 +39,9 @@ class ResNetEncoder(ImageEncoder):
         except ImportError as err:  # pragma: no cover - exercised only without torchvision
             raise MissingDependencyError("torchvision", "vision") from err
         if arch not in _STAGE_CHANNELS:
-            raise InvalidConfigError(f"unknown arch {arch!r}; choose from {sorted(_STAGE_CHANNELS)}")
+            raise InvalidConfigError(
+                f"unknown arch {arch!r}; choose from {sorted(_STAGE_CHANNELS)}"
+            )
         if not 1 <= num_levels <= 3:
             raise InvalidConfigError("num_levels must be in [1, 3]")
         net = getattr(torchvision.models, arch)(weights="DEFAULT" if pretrained else None)
@@ -50,6 +52,7 @@ class ResNetEncoder(ImageEncoder):
         self.neck = FPN(_STAGE_CHANNELS[arch][1 : 1 + num_levels], out_channels)
 
     def extract(self, images: Tensor) -> list[Tensor]:
+        """Return the FPN pyramid for normalised images (strides 8, 16, 32 ...)."""
         x = self.stem(images)
         feats = []
         for stage in self.stages:

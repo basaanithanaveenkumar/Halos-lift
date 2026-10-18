@@ -54,6 +54,7 @@ class BEVToTPV(nn.Module):
         return out.transpose(2, 3)
 
     def forward(self, bev: Tensor) -> TPVPlanes:
+        """Expand BEV features ``(B, C, X, Y)`` into the three TPV planes."""
         nx, ny, _ = self.resolution
         xy = F.interpolate(self.proj_xy(bev), size=(nx, ny), mode="bilinear", align_corners=False)
         xz = self._expand(bev.mean(dim=3), self.proj_xz, nx)

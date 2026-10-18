@@ -19,6 +19,7 @@ class DepthWarpStoryboard(DepthStoryboard):
     PROBES = ((6, 5, 1), (5, 5, 1), (2, 1, 2), (4, 6, 1))
 
     def steps(self) -> list[Step]:
+        """Build the ordered animation steps explaining this lifter."""
         voxels = self.facts.depth_consistent()
         return [
             self.step_inputs(),

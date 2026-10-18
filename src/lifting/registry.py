@@ -46,7 +46,9 @@ class Registry(Generic[T]):
         self._entries: dict[str, Callable[..., T]] = {}
 
     # ------------------------------------------------------------------ registration
-    def register(self, name: str, force: bool = False) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    def register(
+        self, name: str, force: bool = False
+    ) -> Callable[[Callable[..., T]], Callable[..., T]]:
         """Decorator registering a class or factory under ``name``.
 
         Args:

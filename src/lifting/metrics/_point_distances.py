@@ -15,6 +15,6 @@ def _pairwise_sq_dist(a: Tensor, b: Tensor) -> Tensor:
         dists: [N, M]
     """
     # ||a - b||² = ||a||² + ||b||² - 2·a·bᵀ
-    aa = (a ** 2).sum(1, keepdim=True)   # [N, 1]
-    bb = (b ** 2).sum(1, keepdim=True)   # [M, 1]
+    aa = (a**2).sum(1, keepdim=True)  # [N, 1]
+    bb = (b**2).sum(1, keepdim=True)  # [M, 1]
     return (aa + bb.T - 2.0 * (a @ b.T)).clamp(min=0.0)

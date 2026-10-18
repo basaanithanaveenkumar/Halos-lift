@@ -39,9 +39,7 @@ def test_bev_to_tpv_columns_follow_the_matching_bev_axis() -> None:
 
 def test_bev_lifter_output_feeds_tpv_aggregator(batch: SceneBatch, grid: GridSpec) -> None:
     model = build_bev_model("simple_bev", grid, 3, (32, 64), channels=16)
-    feats = [
-        f.view(2, 4, *f.shape[1:]) for f in model.encoder(batch.images.flatten(0, 1))
-    ]
+    feats = [f.view(2, 4, *f.shape[1:]) for f in model.encoder(batch.images.flatten(0, 1))]
     bev = model.lifter(feats, batch.cameras)
     planes = BEVToTPV(16, 16, grid.resolution)(bev)
     out = TPVAggregator(grid, 16, 3)(planes)

@@ -70,6 +70,15 @@ class TPVFormerLifter(BaseLifter):
         self.compressor = HeightCompressor(in_channels, grid.resolution[2], out_channels)
 
     def lift_planes(self, features: Sequence[Tensor], cameras: Cameras) -> TPVPlanes:
+        """Lift per-camera features into the three TPV planes.
+
+        Args:
+            features: feature pyramid from the image encoder.
+            cameras: the rig geometry.
+
+        Returns:
+            The ``xy`` / ``xz`` / ``yz`` feature planes.
+        """
         values, shapes = flatten_pyramid(features[: self.num_levels], self.level_embed)
         b = values.shape[0]
         camera_reference = self.references.camera_reference_points(cameras)
@@ -91,4 +100,13 @@ class TPVFormerLifter(BaseLifter):
         return TPVPlanes.from_tokens(query, self.grid.resolution)
 
     def forward(self, features: Sequence[Tensor], cameras: Cameras) -> Tensor:
+        """Lift per-camera features into a BEV map.
+
+        Args:
+            features: feature pyramid, each level ``(B*N, C, h, w)`` or ``(B, N, C, h, w)`` as the encoder returns it.
+            cameras: the rig geometry.
+
+        Returns:
+            BEV features ``(B, C, X, Y)``.
+        """
         return self.compressor(self.lift_planes(features, cameras).to_voxels())

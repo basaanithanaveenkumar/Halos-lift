@@ -22,13 +22,16 @@ from pathlib import Path
 from typing import Any
 
 import torch
+from loguru import logger
 
-from lifting.data import SyntheticSceneDataset
+from lifting.config import ConfigLoader, TrainConfig
+from lifting.data import CameraRig, SyntheticSceneDataset
 from lifting.distributed import DistributedSession, SceneLoaderBuilder, launch_on_ray
+from lifting.exceptions import InvalidConfigError
 from lifting.geometry import GridSpec
 from lifting.lifters import LIFTERS
 from lifting.models import build_bev_model
-from lifting.training import BEVSegmentationTask, DepthSupervisedTask, OccupancyTask
+from lifting.training import TASKS, DepthSupervisedTask
 from lifting.training.distributed_trainer import DistributedTrainer
 
 #: Arguments that change the training *samples*; they form the WebDataset fingerprint.
@@ -36,14 +39,40 @@ DATA_ARGUMENTS = ("train_scenes", "resolution", "seed")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Train a lifting model on synthetic multi-camera scenes.")
+    """Parse ``lifting-train`` arguments.
+
+    ``--config FILE`` (YAML/JSON with ``_base_`` inheritance) and ``--cfg-options a.b=c`` supply
+    defaults that explicit flags still override.
+
+    Args:
+        argv: argument list; ``sys.argv[1:]`` when ``None``.
+
+    Returns:
+        The parsed namespace.
+
+    Raises:
+        InvalidConfigError: the config file or an override is invalid.
+    """
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--config", type=Path, default=None)
+    pre.add_argument("--cfg-options", nargs="+", default=[], metavar="KEY=VALUE")
+    known, _ = pre.parse_known_args(argv)
+    p = argparse.ArgumentParser(
+        description="Train a lifting model on synthetic multi-camera scenes.", parents=[pre]
+    )
     model = p.add_argument_group("model")
     model.add_argument("--lifter", default="simple_bev", choices=LIFTERS.names())
-    model.add_argument("--model", default="bev", choices=("bev", "triplane"),
-                       help="bev: BEV segmentation; triplane: 3D occupancy with the triplane lifter")
+    model.add_argument(
+        "--model",
+        default="bev",
+        choices=("bev", "triplane"),
+        help="bev: BEV segmentation; triplane: 3D occupancy with the triplane lifter",
+    )
     model.add_argument("--channels", type=int, default=32)
     model.add_argument("--num-classes", type=int, default=3, help="background + object classes")
-    model.add_argument("--resolution", type=int, nargs=3, default=(32, 32, 4), metavar=("X", "Y", "Z"))
+    model.add_argument(
+        "--resolution", type=int, nargs=3, default=(32, 32, 4), metavar=("X", "Y", "Z")
+    )
 
     data = p.add_argument_group("data")
     data.add_argument("--train-scenes", type=int, default=512)
@@ -56,37 +85,69 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     train.add_argument("--lr", type=float, default=2e-3)
     train.add_argument("--weight-decay", type=float, default=1e-4)
     train.add_argument("--grad-clip", type=float, default=5.0)
-    train.add_argument("--depth-weight", type=float, default=0.0,
-                       help="depth cross-entropy weight for depth-based lifters (0 = off)")
-    train.add_argument("--aux-weight", type=float, default=0.5,
-                       help="per-plane auxiliary loss weight (--model triplane)")
+    train.add_argument(
+        "--depth-weight",
+        type=float,
+        default=0.0,
+        help="depth cross-entropy weight for depth-based lifters (0 = off)",
+    )
+    train.add_argument(
+        "--aux-weight",
+        type=float,
+        default=0.5,
+        help="per-plane auxiliary loss weight (--model triplane)",
+    )
     train.add_argument("--seed", type=int, default=0)
     train.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
-    train.add_argument("--eval-every", type=int, default=1, help="evaluate + checkpoint every N epochs")
+    train.add_argument(
+        "--eval-every", type=int, default=1, help="evaluate + checkpoint every N epochs"
+    )
     train.add_argument("--ckpt-dir", type=Path, default=Path("checkpoints/lift"))
-    train.add_argument("--keep-ckpts", type=int, default=3, help="newest checkpoints kept (0 = all)")
+    train.add_argument(
+        "--keep-ckpts", type=int, default=3, help="newest checkpoints kept (0 = all)"
+    )
     train.add_argument("--resume", type=Path, default=None, help="checkpoint to continue from")
     train.add_argument("--json", type=Path, default=None, help="write the final metrics here")
 
     ray = p.add_argument_group("Ray Train (optional, needs halos-lift[ray])")
     ray.add_argument("--ray", action="store_true", help="launch on Ray Train workers")
-    ray.add_argument("--ray-address", default=None, help="'auto' or ray://host:10001 (default: local Ray)")
-    ray.add_argument("--ray-num-workers", type=int, default=1, help="training processes (one per GPU)")
+    ray.add_argument(
+        "--ray-address", default=None, help="'auto' or ray://host:10001 (default: local Ray)"
+    )
+    ray.add_argument(
+        "--ray-num-workers", type=int, default=1, help="training processes (one per GPU)"
+    )
     ray.add_argument("--ray-use-gpu", action="store_true", help="one GPU per worker")
     ray.add_argument("--ray-cpus-per-worker", type=float, default=None)
-    ray.add_argument("--ray-storage-path", default="ray_results",
-                     help="where Ray persists reported checkpoints (local, NFS or s3://)")
+    ray.add_argument(
+        "--ray-storage-path",
+        default="ray_results",
+        help="where Ray persists reported checkpoints (local, NFS or s3://)",
+    )
     ray.add_argument("--ray-max-failures", type=int, default=0, help="worker-group restarts")
 
     wds = p.add_argument_group("WebDataset (optional, needs halos-lift[webdataset])")
-    wds.add_argument("--webdataset", action="store_true",
-                     help="write the training scenes to tar shards once, then stream them")
+    wds.add_argument(
+        "--webdataset",
+        action="store_true",
+        help="write the training scenes to tar shards once, then stream them",
+    )
     wds.add_argument("--webdataset-root", default="data/webdataset")
-    wds.add_argument("--webdataset-samples-per-shard", type=int, default=64,
-                     help="keep >= ranks x DataLoader workers shards")
+    wds.add_argument(
+        "--webdataset-samples-per-shard",
+        type=int,
+        default=64,
+        help="keep >= ranks x DataLoader workers shards",
+    )
     wds.add_argument("--webdataset-convert-workers", type=int, default=0)
     wds.add_argument("--webdataset-shuffle-buffer", type=int, default=256)
     wds.add_argument("--webdataset-overwrite", action="store_true")
+    if known.config is not None:
+        # Typed at the boundary: the rest of the CLI never sees the raw mapping.
+        loaded = ConfigLoader.load(known.config, known.cfg_options)
+        p.set_defaults(**TrainConfig.from_mapping(loaded).as_defaults())
+    elif known.cfg_options:
+        raise InvalidConfigError("--cfg-options needs --config")
     return p.parse_args(argv)
 
 
@@ -134,18 +195,27 @@ def data_fingerprint(args: argparse.Namespace) -> str:
     return hashlib.sha256(json.dumps(spec, sort_keys=True, default=list).encode()).hexdigest()
 
 
-def build_model_and_task(args: argparse.Namespace, grid: GridSpec, rig) -> tuple[torch.nn.Module, Any]:
+def build_model_and_task(
+    args: argparse.Namespace, grid: GridSpec, rig: CameraRig
+) -> tuple[torch.nn.Module, Any]:
     """The model for ``--model`` / ``--lifter`` and the matching task (+ depth supervision)."""
-    common = dict(grid=grid, num_classes=args.num_classes, image_size=rig.image_size,
-                  num_cameras=rig.num_cameras, channels=args.channels)
+    common = dict(
+        grid=grid,
+        num_classes=args.num_classes,
+        image_size=rig.image_size,
+        num_cameras=rig.num_cameras,
+        channels=args.channels,
+    )
     if args.model == "triplane":
         from lifting.triplane import build_triplane_model  # lazy: keeps BEV-only runs light
 
         model = build_triplane_model(args.lifter, aux_heads=args.aux_weight > 0, **common)
-        task: Any = OccupancyTask(args.num_classes, aux_weight=args.aux_weight)
+        task: Any = TASKS.build(
+            "occupancy", num_classes=args.num_classes, aux_weight=args.aux_weight
+        )
     else:
         model = build_bev_model(args.lifter, **common)
-        task = BEVSegmentationTask(args.num_classes)
+        task = TASKS.build("bev_segmentation", num_classes=args.num_classes)
     if args.depth_weight > 0:
         task = DepthSupervisedTask(task, weight=args.depth_weight)
     return model, task
@@ -153,19 +223,31 @@ def build_model_and_task(args: argparse.Namespace, grid: GridSpec, rig) -> tuple
 
 # ---------------------------------------------------------------------------- training
 def train(args: argparse.Namespace) -> dict[str, float]:
-    """Train on this process (one rank of a torchrun / Ray run, or alone). Returns rank 0's
-    final metrics (``{}`` on the other ranks)."""
+    """Train on this process (one rank of a torchrun / Ray run, or alone).
+
+    Args:
+        args: parsed arguments from :func:`parse_args`.
+
+    Returns:
+        Rank 0's final metrics (``{}`` on the other ranks).
+    """
     session = DistributedSession.start(args.device)
     torch.manual_seed(args.seed)  # identical initial weights on every rank (DDP also broadcasts)
     grid = GridSpec(resolution=tuple(args.resolution))
     train_set = SyntheticSceneDataset(args.train_scenes, grid, seed=args.seed + 1)
     val_set = SyntheticSceneDataset(args.val_scenes, grid, seed=args.seed + 2)
     model, task = build_model_and_task(args, grid, train_set.rig)
-    trainer = DistributedTrainer(model, task, session, lr=args.lr, weight_decay=args.weight_decay,
-                                 grad_clip=args.grad_clip)
+    trainer = DistributedTrainer(
+        model, task, session, lr=args.lr, weight_decay=args.weight_decay, grad_clip=args.grad_clip
+    )
 
-    builder = SceneLoaderBuilder(session, args.batch_size, args.num_workers,
-                                 webdataset=webdataset_config(args), seed=args.seed)
+    builder = SceneLoaderBuilder(
+        session,
+        args.batch_size,
+        args.num_workers,
+        webdataset=webdataset_config(args),
+        seed=args.seed,
+    )
     fingerprint = data_fingerprint(args)
     loader = builder.train_loader(train_set, f"synthetic-train-{fingerprint[:12]}", fingerprint)
     val_loader = builder.eval_loader(val_set)
@@ -183,6 +265,7 @@ def train(args: argparse.Namespace) -> dict[str, float]:
     final: dict[str, float] = {}
 
     def on_epoch_end(epoch: int, step: int, loss: float) -> None:
+        """Evaluate, checkpoint and report at the end of each epoch."""
         metrics = {"epoch": float(epoch), "step": float(step), "train/loss": loss}
         done = step >= args.steps
         checkpoint = None
@@ -191,8 +274,11 @@ def train(args: argparse.Namespace) -> dict[str, float]:
                 metrics["val/miou"] = trainer.evaluate(val_loader).mean_foreground()
                 checkpoint = trainer.save_checkpoint(args.ckpt_dir, keep_last=args.keep_ckpts)
             session.barrier()  # the checkpoint is complete before anyone reports it
-        _log(session, f"epoch {epoch} | step {step} | "
-             + " | ".join(f"{k} {v:.4f}" for k, v in metrics.items() if "/" in k))
+        _log(
+            session,
+            f"epoch {epoch} | step {step} | "
+            + " | ".join(f"{k} {v:.4f}" for k, v in metrics.items() if "/" in k),
+        )
         if reporter is not None:  # every rank reports; rank 0 attaches the checkpoint
             reporter.report(metrics, checkpoint_dir=args.ckpt_dir if checkpoint else None)
         final.update(metrics)
@@ -216,17 +302,19 @@ def _restored_ray_checkpoint(args: argparse.Namespace) -> Path | None:
 
 
 def _log(session: DistributedSession, message: str) -> None:
+    """Log ``message`` once per job (rank 0 only)."""
     if session.is_main:
-        print(f"[lifting-train] {message}", flush=True)
+        logger.info("[lifting-train] {}", message)
 
 
 def main(argv: list[str] | None = None) -> int:
+    """``lifting-train`` entry point; returns the process exit code."""
     args = parse_args(argv)
     if args.ray:
         # Workers import lifting.train_cli and call train(args); nothing else is pickled.
         result = launch_on_ray("lifting.train_cli:train", args, ray_config(args))
         metrics = dict(result.metrics)
-        print(f"[lifting-train] ray: {metrics}  checkpoint={result.checkpoint_path}")
+        logger.info("[lifting-train] ray: {}  checkpoint={}", metrics, result.checkpoint_path)
     else:
         metrics = train(args)
     if args.json is not None and metrics:

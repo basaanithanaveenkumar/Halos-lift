@@ -34,8 +34,9 @@ class FScoreMetric:
         self.reset()
 
     def reset(self) -> None:
+        """Clear all accumulated statistics."""
         self._prec: dict[float, float] = {t: 0.0 for t in self.thresholds}
-        self._rec:  dict[float, float] = {t: 0.0 for t in self.thresholds}
+        self._rec: dict[float, float] = {t: 0.0 for t in self.thresholds}
         self._n = 0
 
     def update(self, pred_pts: Tensor, gt_pts: Tensor) -> None:
@@ -47,24 +48,25 @@ class FScoreMetric:
         p = pred_pts.float().detach().cpu()
         q = gt_pts.float().detach().cpu()
 
-        dists = _pairwise_sq_dist(p, q)                      # [N, M]
-        min_p2q = dists.min(dim=1).values.sqrt()             # [N] — dist pred→nearest GT
-        min_q2p = dists.min(dim=0).values.sqrt()             # [M] — dist GT→nearest pred
+        dists = _pairwise_sq_dist(p, q)  # [N, M]
+        min_p2q = dists.min(dim=1).values.sqrt()  # [N] — dist pred→nearest GT
+        min_q2p = dists.min(dim=0).values.sqrt()  # [M] — dist GT→nearest pred
 
         for tau in self.thresholds:
             self._prec[tau] += float((min_p2q < tau).float().mean())
-            self._rec[tau]  += float((min_q2p < tau).float().mean())
+            self._rec[tau] += float((min_q2p < tau).float().mean())
         self._n += 1
 
     def compute(self) -> dict[str, float]:
+        """Return the metric values accumulated since the last :meth:`reset`."""
         n = max(self._n, 1)
         out: dict[str, float] = {}
         for tau in self.thresholds:
             p = self._prec[tau] / n
-            r = self._rec[tau]  / n
+            r = self._rec[tau] / n
             f = 2 * p * r / max(p + r, 1e-8)
             tag = f"@{tau:.2f}"
             out[f"fscore_precision{tag}"] = p
-            out[f"fscore_recall{tag}"]    = r
-            out[f"fscore{tag}"]           = f
+            out[f"fscore_recall{tag}"] = r
+            out[f"fscore{tag}"] = f
         return out

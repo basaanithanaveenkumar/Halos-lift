@@ -132,4 +132,5 @@ class RayCastRenderer:
             labels=labels.view(n, h, w),
         )
 
+
 __all__ = ["RenderResult"]

@@ -1,0 +1,9 @@
+# Triplane 3D-occupancy training: the synthetic defaults with a triplane TPVFormer.
+_base_: train_synthetic.yaml
+
+model:
+  lifter: tpvformer
+  kind: triplane
+
+train:
+  steps: 400

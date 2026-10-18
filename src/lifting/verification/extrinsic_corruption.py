@@ -20,6 +20,7 @@ class ExtrinsicCorruption:
         self.yaw_deg = yaw_deg
 
     def transform(self) -> torch.Tensor:
+        """The rigid ``4x4`` transform applied to every camera pose."""
         a = math.radians(self.yaw_deg)
         t = torch.eye(4)
         t[0, 0], t[0, 1], t[1, 0], t[1, 1] = math.cos(a), -math.sin(a), math.sin(a), math.cos(a)

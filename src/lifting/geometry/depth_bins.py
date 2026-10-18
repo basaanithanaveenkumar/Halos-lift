@@ -21,9 +21,11 @@ class DepthBins:
 
     @property
     def step(self) -> float:
+        """Spacing between consecutive bin centres in metres."""
         return (self.max_depth - self.min_depth) / self.num_bins
 
     def centers(self, device: torch.device | str | None = None) -> Tensor:
+        """Bin centre depths as a ``(num_bins,)`` tensor."""
         return self.min_depth + (torch.arange(self.num_bins, device=device) + 0.5) * self.step
 
     def to_normalized(self, depth: Tensor) -> Tensor:
@@ -31,4 +33,5 @@ class DepthBins:
         return 2.0 * (depth - self.min_depth) / (self.max_depth - self.min_depth) - 1.0
 
     def contains(self, depth: Tensor) -> Tensor:
+        """Whether ``depth`` lies inside ``[min_depth, max_depth]``."""
         return (depth >= self.min_depth) & (depth < self.max_depth)

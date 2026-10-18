@@ -18,14 +18,17 @@ class ToyCamera:
 
     @property
     def forward(self) -> np.ndarray:
+        """Unit viewing direction in world coordinates."""
         a = math.radians(self.yaw)
         return np.array([math.cos(a), math.sin(a), 0.0])
 
     @property
     def right(self) -> np.ndarray:
+        """Unit vector pointing right in the world frame."""
         a = math.radians(self.yaw)
         return np.array([math.sin(a), -math.cos(a), 0.0])
 
     @property
     def up(self) -> np.ndarray:
+        """Unit vector pointing up in the camera frame, in world coordinates."""
         return np.array([0.0, 0.0, 1.0])

@@ -18,6 +18,7 @@ class IoUMetric:
         self.confusion = torch.zeros(num_classes, num_classes, dtype=torch.long)
 
     def reset(self) -> None:
+        """Clear all accumulated statistics."""
         self.confusion.zero_()
 
     def update(self, prediction: Tensor, target: Tensor) -> None:

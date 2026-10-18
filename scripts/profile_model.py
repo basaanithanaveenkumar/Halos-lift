@@ -25,13 +25,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "HaleBlocks" / "src
 
 import torch
 import torch.nn as nn
-
 from hale_core.profiling import ModelProfiler
-
 
 # ---------------------------------------------------------------------------
 # Stub modules matching Halos-lift architecture
 # ---------------------------------------------------------------------------
+
 
 class StubDepthHead(nn.Module):
     """DepthHead: conv backbone that predicts per-pixel depth distribution + context."""
@@ -52,7 +51,7 @@ class StubDepthHead(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        ctx   = self.context_net(x)
+        ctx = self.context_net(x)
         depth = self.depth_net(x)
         return depth.softmax(dim=1), ctx
 
@@ -65,14 +64,16 @@ class StubImageBackbone(nn.Module):
         ch = [in_channels, 32, 64, out_channels]
         self.levels = nn.ModuleList()
         for i in range(levels):
-            self.levels.append(nn.Sequential(
-                nn.Conv2d(ch[i], ch[i + 1], 3, stride=2, padding=1),
-                nn.BatchNorm2d(ch[i + 1]),
-                nn.ReLU(),
-                nn.Conv2d(ch[i + 1], ch[i + 1], 3, padding=1),
-                nn.BatchNorm2d(ch[i + 1]),
-                nn.ReLU(),
-            ))
+            self.levels.append(
+                nn.Sequential(
+                    nn.Conv2d(ch[i], ch[i + 1], 3, stride=2, padding=1),
+                    nn.BatchNorm2d(ch[i + 1]),
+                    nn.ReLU(),
+                    nn.Conv2d(ch[i + 1], ch[i + 1], 3, padding=1),
+                    nn.BatchNorm2d(ch[i + 1]),
+                    nn.ReLU(),
+                )
+            )
 
     def forward(self, x: torch.Tensor) -> list[torch.Tensor]:
         feats = []
@@ -103,13 +104,13 @@ class StubDeformableAttention(nn.Module):
 
     def __init__(self, d_model: int = 256, n_heads: int = 8, n_levels: int = 3):
         super().__init__()
-        self.query_proj  = nn.Linear(d_model, d_model)
-        self.key_proj    = nn.Linear(d_model, d_model)
-        self.value_proj  = nn.Linear(d_model, d_model)
-        self.out_proj    = nn.Linear(d_model, d_model)
-        self.attn        = nn.MultiheadAttention(d_model, n_heads, batch_first=True)
-        self.norm        = nn.LayerNorm(d_model)
-        self.ffn         = nn.Sequential(
+        self.query_proj = nn.Linear(d_model, d_model)
+        self.key_proj = nn.Linear(d_model, d_model)
+        self.value_proj = nn.Linear(d_model, d_model)
+        self.out_proj = nn.Linear(d_model, d_model)
+        self.attn = nn.MultiheadAttention(d_model, n_heads, batch_first=True)
+        self.norm = nn.LayerNorm(d_model)
+        self.ffn = nn.Sequential(
             nn.Linear(d_model, d_model * 4),
             nn.GELU(),
             nn.Linear(d_model * 4, d_model),
@@ -140,13 +141,13 @@ class StubBEVPipeline(nn.Module):
         num_depth_bins: int = 32,
     ):
         super().__init__()
-        self.backbone     = StubImageBackbone(img_channels, feat_channels)
-        self.depth_head   = StubDepthHead(feat_channels, num_depth_bins, feat_channels)
-        self.compressor   = StubHeightCompressor(feat_channels, z_bins=4, out_ch=bev_channels)
-        self.bev_embed    = nn.Embedding(bev_h * bev_w, bev_channels)
-        self.attn_layers  = nn.ModuleList([
-            StubDeformableAttention(bev_channels, n_heads) for _ in range(n_attn_layers)
-        ])
+        self.backbone = StubImageBackbone(img_channels, feat_channels)
+        self.depth_head = StubDepthHead(feat_channels, num_depth_bins, feat_channels)
+        self.compressor = StubHeightCompressor(feat_channels, z_bins=4, out_ch=bev_channels)
+        self.bev_embed = nn.Embedding(bev_h * bev_w, bev_channels)
+        self.attn_layers = nn.ModuleList(
+            [StubDeformableAttention(bev_channels, n_heads) for _ in range(n_attn_layers)]
+        )
         self.bev_h = bev_h
         self.bev_w = bev_w
 
@@ -156,16 +157,16 @@ class StubBEVPipeline(nn.Module):
         imgs_flat = images.reshape(b * n, c, h, w)
 
         feats = self.backbone(imgs_flat)
-        feat  = feats[-1]                     # (B*N, feat_ch, H', W')
-        _, ctx = self.depth_head(feat)        # ctx: (B*N, feat_ch, H', W')
+        feat = feats[-1]  # (B*N, feat_ch, H', W')
+        _, ctx = self.depth_head(feat)  # ctx: (B*N, feat_ch, H', W')
 
         # Fake height compress: reshape context to voxel grid
         ctx_bev = ctx.reshape(b * n, -1, h // 8, w // 8)
-        bev     = self.compressor(ctx_bev)    # (B*N, bev_ch, H'', W'')
+        bev = self.compressor(ctx_bev)  # (B*N, bev_ch, H'', W'')
 
         # BEV cross-attention query
         bev_flat = bev.reshape(b, n * bev.shape[-2] * bev.shape[-1], -1)
-        ids   = torch.arange(self.bev_h * self.bev_w, device=images.device)
+        ids = torch.arange(self.bev_h * self.bev_w, device=images.device)
         query = self.bev_embed(ids).unsqueeze(0).expand(b, -1, -1)
 
         for attn in self.attn_layers:
@@ -177,6 +178,7 @@ class StubBEVPipeline(nn.Module):
 # ---------------------------------------------------------------------------
 # Builders
 # ---------------------------------------------------------------------------
+
 
 def build_depth(args):
     model = StubDepthHead(in_channels=64, num_depth_bins=args.depth_bins)
@@ -212,27 +214,28 @@ _BUILDERS = {"depth": build_depth, "backbone": build_backbone, "bev": build_bev}
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Halos-lift profiler")
-    p.add_argument("--component",     default="bev",  choices=list(_BUILDERS))
-    p.add_argument("--device",        default="cpu")
-    p.add_argument("--batch-size",    type=int, default=1)
-    p.add_argument("--n-cams",        type=int, default=6,   help="number of camera views")
-    p.add_argument("--feat-h",        type=int, default=28,  help="feature map height")
-    p.add_argument("--feat-w",        type=int, default=28,  help="feature map width")
+    p.add_argument("--component", default="bev", choices=list(_BUILDERS))
+    p.add_argument("--device", default="cpu")
+    p.add_argument("--batch-size", type=int, default=1)
+    p.add_argument("--n-cams", type=int, default=6, help="number of camera views")
+    p.add_argument("--feat-h", type=int, default=28, help="feature map height")
+    p.add_argument("--feat-w", type=int, default=28, help="feature map width")
     p.add_argument("--feat-channels", type=int, default=64)
-    p.add_argument("--bev-channels",  type=int, default=64)
-    p.add_argument("--bev-h",         type=int, default=50)
-    p.add_argument("--bev-w",         type=int, default=50)
-    p.add_argument("--depth-bins",    type=int, default=32)
+    p.add_argument("--bev-channels", type=int, default=64)
+    p.add_argument("--bev-h", type=int, default=50)
+    p.add_argument("--bev-w", type=int, default=50)
+    p.add_argument("--depth-bins", type=int, default=32)
     p.add_argument("--n-attn-layers", type=int, default=2)
-    p.add_argument("--n-heads",       type=int, default=4)
-    p.add_argument("--top",           type=int, default=40)
-    p.add_argument("--sort",          default="latency", choices=["latency", "flops", "matmuls"])
-    p.add_argument("--warmup",        type=int, default=1)
+    p.add_argument("--n-heads", type=int, default=4)
+    p.add_argument("--top", type=int, default=40)
+    p.add_argument("--sort", default="latency", choices=["latency", "flops", "matmuls"])
+    p.add_argument("--warmup", type=int, default=1)
     p.add_argument("--torch-profiler", action="store_true")
-    p.add_argument("--trace",         default=None)
-    p.add_argument("--json",          default=None)
+    p.add_argument("--trace", default=None)
+    p.add_argument("--json", default=None)
     return p.parse_args()
 
 
@@ -240,13 +243,17 @@ def main() -> None:
     args = parse_args()
     device = torch.device(args.device)
 
-    print(f"\n[profile] Halos-lift  component={args.component}  device={device}  "
-          f"batch={args.batch_size}  n_cams={args.n_cams}  "
-          f"bev={args.bev_h}x{args.bev_w}  depth_bins={args.depth_bins}")
+    print(
+        f"\n[profile] Halos-lift  component={args.component}  device={device}  "
+        f"batch={args.batch_size}  n_cams={args.n_cams}  "
+        f"bev={args.bev_h}x{args.bev_w}  depth_bins={args.depth_bins}"
+    )
 
     model, dummy = _BUILDERS[args.component](args)
     model = model.to(device).eval()
-    dummy = dummy.to(device) if isinstance(dummy, torch.Tensor) else tuple(t.to(device) for t in dummy)
+    dummy = (
+        dummy.to(device) if isinstance(dummy, torch.Tensor) else tuple(t.to(device) for t in dummy)
+    )
 
     def _fwd():
         return model(*dummy) if isinstance(dummy, tuple) else model(dummy)
@@ -274,6 +281,7 @@ def main() -> None:
 
     if args.json:
         import json
+
         Path(args.json).parent.mkdir(parents=True, exist_ok=True)
         with open(args.json, "w") as f:
             json.dump(report.to_dict(), f, indent=2)

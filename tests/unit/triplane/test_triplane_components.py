@@ -160,7 +160,11 @@ def test_alpamayo_planes_are_resampled_onto_the_uniform_grid() -> None:
     assert (uniform.xy[0, 0, :, 0] - ux).abs().max() < 0.5 * grid.voxel_size[0]
     # A uniform layout (inner_frac=1) makes the resampling the identity.
     flat = AlpamayoTriplaneAdapter(grid, 4, 4, num_layers=1, inner_frac=1.0)
-    planes = TPVPlanes(torch.randn(2, 4, nx, ny), torch.randn(2, 4, nx, nz), torch.randn(2, 4, ny, nz))
+    planes = TPVPlanes(
+        torch.randn(2, 4, nx, ny), torch.randn(2, 4, nx, nz), torch.randn(2, 4, ny, nz)
+    )
     out = flat.to_uniform(planes)
-    assert all(torch.allclose(a, b, atol=1e-5) for a, b in zip(
-        (out.xy, out.xz, out.yz), (planes.xy, planes.xz, planes.yz), strict=True))
+    assert all(
+        torch.allclose(a, b, atol=1e-5)
+        for a, b in zip((out.xy, out.xz, out.yz), (planes.xy, planes.xz, planes.yz), strict=True)
+    )

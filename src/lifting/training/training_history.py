@@ -12,6 +12,7 @@ class TrainingHistory:
     losses: list[float] = field(default_factory=list)
 
     def smoothed(self, window: int = 10) -> list[float]:
+        """Moving average of the loss over ``window`` steps."""
         out = []
         for i in range(len(self.losses)):
             chunk = self.losses[max(0, i - window + 1) : i + 1]

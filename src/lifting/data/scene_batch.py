@@ -30,6 +30,7 @@ class SceneBatch:
     depth: Tensor
 
     def to(self, device: torch.device | str) -> SceneBatch:
+        """Return a copy of the batch with every tensor moved to ``device``."""
         return SceneBatch(
             self.images.to(device),
             self.cameras.to(device),

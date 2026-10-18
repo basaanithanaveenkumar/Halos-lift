@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from torch import Tensor
 
 
@@ -32,6 +30,7 @@ class EPEMetric:
         self.reset()
 
     def reset(self) -> None:
+        """Clear all accumulated statistics."""
         self._total_epe = 0.0
         self._n = 0
         self._below_005 = 0
@@ -39,10 +38,11 @@ class EPEMetric:
 
     def update(
         self,
-        pred_flow: Tensor,              # [N, 3] or [B, N, 3]
-        gt_flow:   Tensor,              # same shape
-        mask:      Optional[Tensor] = None,  # [N] or [B, N] boolean
+        pred_flow: Tensor,  # [N, 3] or [B, N, 3]
+        gt_flow: Tensor,  # same shape
+        mask: Tensor | None = None,  # [N] or [B, N] boolean
     ) -> None:
+        """Accumulate one batch of predictions and targets."""
         p = pred_flow.float().detach().cpu()
         g = gt_flow.float().detach().cpu()
 
@@ -52,15 +52,16 @@ class EPEMetric:
             epe = epe[mask.bool()]
 
         epe = epe.reshape(-1)
-        self._total_epe  += float(epe.sum())
-        self._n          += epe.numel()
-        self._below_005  += int((epe < 0.05).sum())
-        self._below_015  += int((epe < 0.15).sum())
+        self._total_epe += float(epe.sum())
+        self._n += epe.numel()
+        self._below_005 += int((epe < 0.05).sum())
+        self._below_015 += int((epe < 0.15).sum())
 
     def compute(self) -> dict[str, float]:
+        """Return the metric values accumulated since the last :meth:`reset`."""
         n = max(self._n, 1)
         return {
-            "epe_mean":  self._total_epe / n,
-            "epe_1px":   self._below_005 / n,   # fraction within 5 cm
-            "epe_3px":   self._below_015 / n,   # fraction within 15 cm
+            "epe_mean": self._total_epe / n,
+            "epe_1px": self._below_005 / n,  # fraction within 5 cm
+            "epe_3px": self._below_015 / n,  # fraction within 15 cm
         }

@@ -25,10 +25,12 @@ class TPVPlanes:
 
     @property
     def resolution(self) -> tuple[int, int, int]:
+        """Voxel resolution ``(X, Y, Z)`` the planes describe."""
         return self.xy.shape[2], self.xy.shape[3], self.xz.shape[3]
 
     @staticmethod
     def plane_shapes(resolution: tuple[int, int, int]) -> list[tuple[int, int]]:
+        """Spatial shape ``(H, W)`` of the ``xy``, ``xz`` and ``yz`` planes."""
         nx, ny, nz = resolution
         return [(nx, ny), (nx, nz), (ny, nz)]
 
@@ -44,9 +46,11 @@ class TPVPlanes:
         return cls(*planes)
 
     def to_tokens(self) -> Tensor:
+        """Concatenate the planes into one ``(B, XY + XZ + YZ, C)`` token sequence."""
         return torch.cat([p.flatten(2).transpose(1, 2) for p in (self.xy, self.xz, self.yz)], dim=1)
 
     def upsample(self, scale: int) -> TPVPlanes:
+        """Return planes bilinearly enlarged by the integer factor ``scale``."""
         if scale == 1:
             return self
         up = [

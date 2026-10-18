@@ -26,4 +26,5 @@ class TriplaneBEVHead(nn.Module):
         self.compressor = HeightCompressor(channels, height, out_channels)
 
     def forward(self, planes: TPVPlanes) -> Tensor:
+        """Collapse the planes to a BEV map ``(B, C, X, Y)``."""
         return self.compressor(planes.to_voxels())

@@ -4,14 +4,40 @@ from __future__ import annotations
 
 import inspect
 import math
+from collections.abc import Mapping
 from typing import Any
 
 from lifting.decoders import BEVDecoder, SegmentationHead
-from lifting.encoders import ImageEncoder, SimpleConvEncoder
+from lifting.encoders import ENCODERS, ImageEncoder
 from lifting.geometry import DepthBins, GridSpec
-from lifting.lifters import LIFTERS, PlaneAuxHead, TPVAggregator, TPVFormerLifter
+from lifting.lifters import LIFTERS, BaseLifter, PlaneAuxHead, TPVAggregator, TPVFormerLifter
 from lifting.models.bev_segmentation_model import BEVSegmentationModel
 from lifting.models.tpvformer import TPVFormer
+
+#: Accepted wherever a model builder takes an encoder: an instance, a registry name, or a
+#: ``{"type": name, **kwargs}`` mapping.
+EncoderSpec = ImageEncoder | str | Mapping[str, Any]
+
+
+def resolve_encoder(spec: EncoderSpec | None, channels: int) -> ImageEncoder:
+    """Turn an encoder spec into an :class:`ImageEncoder`.
+
+    Args:
+        spec: an encoder instance (returned as is), an :data:`ENCODERS` name, a config mapping
+            with a ``type`` key, or ``None`` for the default two-level ``simple_conv`` encoder.
+        channels: ``out_channels`` given to encoders built from a name or ``None``.
+
+    Returns:
+        The encoder.
+
+    Raises:
+        RegistryError: for an unknown encoder name.
+    """
+    if isinstance(spec, ImageEncoder):
+        return spec
+    if spec is None:
+        return ENCODERS.build("simple_conv", out_channels=channels, num_levels=2)
+    return ENCODERS.build(spec, out_channels=channels)
 
 
 def _feature_size(image_size: tuple[int, int], stride: int) -> tuple[int, int]:
@@ -37,7 +63,7 @@ def build_lifter(
     num_cameras: int,
     encoder: ImageEncoder,
     **kwargs: Any,
-):
+) -> BaseLifter:
     """Build a registered lifter, injecting the context it asks for.
 
     ``feature_size`` and ``num_cameras`` are derived from the encoder / rig, and ``depth_bins``
@@ -63,7 +89,7 @@ def build_bev_model(
     image_size: tuple[int, int] = (48, 96),
     num_cameras: int = 4,
     channels: int = 64,
-    encoder: ImageEncoder | None = None,
+    encoder: EncoderSpec | None = None,
     **lifter_kwargs: Any,
 ) -> BEVSegmentationModel:
     """Build a BEV segmentation model around any registered lifter.
@@ -74,7 +100,7 @@ def build_bev_model(
         out = model(images, cameras)["logits"]  # (B, 3, X, Y)
     """
     grid = grid or GridSpec()
-    encoder = encoder or SimpleConvEncoder(out_channels=channels, num_levels=2)
+    encoder = resolve_encoder(encoder, channels)
     lift = build_lifter(
         lifter, grid, encoder.out_channels, image_size, num_cameras, encoder, **lifter_kwargs
     )
@@ -86,7 +112,7 @@ def build_tpvformer(
     grid: GridSpec | None = None,
     num_classes: int = 3,
     channels: int = 64,
-    encoder: ImageEncoder | None = None,
+    encoder: EncoderSpec | None = None,
     scale: int = 1,
     aux_heads: bool = False,
     **lifter_kwargs: Any,
@@ -97,7 +123,7 @@ def build_tpvformer(
     ``OccupancyTask(num_classes, aux_weight=...)``.
     """
     grid = grid or GridSpec()
-    encoder = encoder or SimpleConvEncoder(out_channels=channels, num_levels=2)
+    encoder = resolve_encoder(encoder, channels)
     lifter = TPVFormerLifter(grid, encoder.out_channels, encoder.out_channels, **lifter_kwargs)
     aggregator = TPVAggregator(grid, encoder.out_channels, num_classes, scale=scale)
     heads = (

@@ -19,6 +19,7 @@ class AlpamayoStoryboard(QueryStoryboard):
     reference = "Ivanovic et al. arXiv:2506.12251  ·  lifting.triplane.AlpamayoTriplaneAdapter"
 
     def steps(self) -> list[Step]:
+        """Build the ordered animation steps explaining this lifter."""
         return [
             self.step_inputs(),
             self._step_layout(),
@@ -40,7 +41,9 @@ class AlpamayoStoryboard(QueryStoryboard):
     def _centers(self, axis: int) -> np.ndarray:
         lo, hi = self.scene.bounds[axis]
         return (
-            MipNeRF360Parametrizer(self.scene.resolution[axis], 0.75, hi - lo, center_m=(lo + hi) / 2)
+            MipNeRF360Parametrizer(
+                self.scene.resolution[axis], 0.75, hi - lo, center_m=(lo + hi) / 2
+            )
             .cell_centers_m()
             .numpy()
         )

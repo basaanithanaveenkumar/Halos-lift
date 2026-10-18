@@ -54,8 +54,9 @@ def test_tiny_axis_with_odd_outer_count_becomes_uniform() -> None:
     assert torch.allclose(p.cell_centers_m(), torch.tensor([-0.5, 0.5, 1.5, 2.5]))
 
 
-@pytest.mark.parametrize("bad", [{"inner_frac": 0.5}, {"inner_frac": 0.0}, {"total": 0},
-                                 {"total_extent_m": 0.0}])
+@pytest.mark.parametrize(
+    "bad", [{"inner_frac": 0.5}, {"inner_frac": 0.0}, {"total": 0}, {"total_extent_m": 0.0}]
+)
 def test_invalid_configuration_raises(bad: dict) -> None:
     kwargs = {"total": 32, "inner_frac": 0.75, "total_extent_m": 32.0, **bad}
     with pytest.raises(ValueError):

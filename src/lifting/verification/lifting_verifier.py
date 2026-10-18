@@ -113,6 +113,7 @@ class LiftingVerifier:
     def verify_bev(
         self, lifter: str, train: list[SceneBatch], val: list[SceneBatch]
     ) -> LifterReport:
+        """Train and evaluate one lifter on BEV segmentation and probe its geometry."""
         cfg = self.config
         torch.manual_seed(cfg.seed)
         model = build_bev_model(
@@ -129,6 +130,7 @@ class LiftingVerifier:
         )
 
     def verify_occupancy(self, train: list[SceneBatch], val: list[SceneBatch]) -> LifterReport:
+        """Train and evaluate TPVFormer on 3D occupancy."""
         cfg = self.config
         torch.manual_seed(cfg.seed)
         model = build_tpvformer(cfg.grid, NUM_CLASSES, cfg.channels)
@@ -138,6 +140,7 @@ class LiftingVerifier:
 
     # ------------------------------------------------------------------ judging
     def judge(self, report: LifterReport, baseline: LifterReport) -> None:
+        """Compare ``report`` against the geometry-free ``baseline`` and set its verdicts."""
         cfg = self.config
         if report.task == "bev":
             report.checks["beats_baseline"] = (
@@ -154,6 +157,7 @@ class LiftingVerifier:
 
     # ------------------------------------------------------------------ entry point
     def run(self) -> VerificationReport:
+        """Run the whole verification and return the report."""
         self.log("rendering synthetic scenes ...")
         train, val = self.build_data()
         baseline = self.verify_bev(self.config.baseline, train, val)

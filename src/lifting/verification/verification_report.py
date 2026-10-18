@@ -17,6 +17,7 @@ class VerificationReport:
 
     @property
     def passed(self) -> bool:
+        """Whether every lifter passed."""
         return all(r.passed for r in self.lifters)
 
     def summary(self) -> str:
@@ -39,6 +40,7 @@ class VerificationReport:
         return "\n".join(lines)
 
     def to_json(self) -> str:
+        """Serialise the report as indented JSON."""
         return json.dumps(
             {
                 "passed": self.passed,

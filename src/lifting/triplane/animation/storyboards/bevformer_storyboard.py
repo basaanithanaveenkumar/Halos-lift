@@ -15,6 +15,7 @@ class BEVFormerStoryboard(QueryStoryboard):
     reference = "Li et al., BEVFormer (ECCV 2022)  ·  lifting.triplane.BEVFormerTriplaneLifter"
 
     def steps(self) -> list[Step]:
+        """Build the ordered animation steps explaining this lifter."""
         return [
             self.step_inputs(),
             self.step_queries(

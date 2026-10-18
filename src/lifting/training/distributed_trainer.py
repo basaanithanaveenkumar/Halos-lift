@@ -55,8 +55,14 @@ class DistributedTrainer(Trainer):
         grad_clip: float | None = 5.0,
         find_unused_parameters: bool = True,
     ) -> None:
-        super().__init__(model, task, lr=lr, weight_decay=weight_decay, grad_clip=grad_clip,
-                         device=session.device)
+        super().__init__(
+            model,
+            task,
+            lr=lr,
+            weight_decay=weight_decay,
+            grad_clip=grad_clip,
+            device=session.device,
+        )
         self.session = session
         self.module = self.model  # the plain network: evaluation, checkpoints
         self.model = session.wrap(self.module, find_unused_parameters=find_unused_parameters)
@@ -105,6 +111,7 @@ class DistributedTrainer(Trainer):
         batches: Iterable[SceneBatch],
         transform: Callable[[SceneBatch], SceneBatch] | None = None,
     ) -> IoUMetric:
+        """Evaluate on ``loader``; every rank must call it, rank 0 returns the metric."""
         wrapped, self.model = self.model, self.module
         try:
             return super().evaluate(batches, transform)
@@ -113,6 +120,7 @@ class DistributedTrainer(Trainer):
 
     @torch.no_grad()
     def predict(self, batch: SceneBatch) -> torch.Tensor:
+        """Predict with the unwrapped module so no DDP collective runs on a single rank."""
         wrapped, self.model = self.model, self.module
         try:
             return super().predict(batch)

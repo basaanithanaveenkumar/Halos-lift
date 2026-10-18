@@ -24,6 +24,7 @@ class PlaneProjection(nn.Module):
         self.proj = nn.ModuleList(nn.Conv2d(in_channels, out_channels, 1) for _ in range(3))
 
     def forward(self, planes: TPVPlanes) -> TPVPlanes:
+        """Refine the three planes with per-plane projections."""
         xy, xz, yz = (
             p(x) for p, x in zip(self.proj, (planes.xy, planes.xz, planes.yz), strict=True)
         )

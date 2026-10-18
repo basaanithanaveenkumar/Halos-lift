@@ -53,6 +53,7 @@ class SceneLoaderBuilder:
 
     @property
     def uses_webdataset(self) -> bool:
+        """Whether training data is streamed from WebDataset shards."""
         return self.webdataset is not None and bool(self.webdataset.enabled)
 
     def train_loader(self, dataset: Dataset, name: str, fingerprint: str) -> DataLoader:
@@ -68,7 +69,11 @@ class SceneLoaderBuilder:
             from hale_core.data.webdataset import WebDatasetAdapter  # lazy: optional extra
 
             stream = WebDatasetAdapter(self.webdataset).prepare(
-                dataset, name, training=True, loader_workers=self.num_workers, fingerprint=fingerprint
+                dataset,
+                name,
+                training=True,
+                loader_workers=self.num_workers,
+                fingerprint=fingerprint,
             )
             return self._loader(stream, sampler=None, shuffle=False, drop_last=True)
         sampler = self.session.sampler(dataset, shuffle=True, seed=self.seed)

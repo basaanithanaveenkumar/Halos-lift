@@ -28,9 +28,11 @@ class ImageEncoder(nn.Module, ABC):
 
     @property
     def num_levels(self) -> int:
+        """Number of pyramid levels the encoder returns."""
         return len(self.strides)
 
     def forward(self, images: Tensor) -> list[Tensor]:
+        """Normalise ``images`` and return the feature pyramid (fine to coarse)."""
         return self.extract((images - self.mean) / self.std)
 
     @abstractmethod
