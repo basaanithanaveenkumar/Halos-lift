@@ -3,6 +3,7 @@
 python examples/custom_lifter.py
 """
 
+# Examples print their results on purpose: the output is what the reader runs them to see.
 from collections.abc import Sequence
 
 import torch

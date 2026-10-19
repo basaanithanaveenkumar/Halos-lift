@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 import torch
+from loguru import logger
 
 from lifting.data import SyntheticSceneDataset
 from lifting.distributed import DistributedSession, SceneLoaderBuilder, launch_on_ray
@@ -216,8 +217,9 @@ def _restored_ray_checkpoint(args: argparse.Namespace) -> Path | None:
 
 
 def _log(session: DistributedSession, message: str) -> None:
+    """Log ``message`` once per job (rank 0 only), so DDP / Ray workers do not repeat it."""
     if session.is_main:
-        print(f"[lifting-train] {message}", flush=True)
+        logger.info("[lifting-train] {}", message)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -226,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         # Workers import lifting.train_cli and call train(args); nothing else is pickled.
         result = launch_on_ray("lifting.train_cli:train", args, ray_config(args))
         metrics = dict(result.metrics)
-        print(f"[lifting-train] ray: {metrics}  checkpoint={result.checkpoint_path}")
+        logger.info("[lifting-train] ray: {}  checkpoint={}", metrics, result.checkpoint_path)
     else:
         metrics = train(args)
     if args.json is not None and metrics:

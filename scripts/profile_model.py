@@ -20,14 +20,14 @@ import argparse
 import sys
 from pathlib import Path
 
+from loguru import logger
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "HaleBlocks" / "src"))
 
 import torch
 import torch.nn as nn
-
 from hale_core.profiling import ModelProfiler
-
 
 # ---------------------------------------------------------------------------
 # Stub modules matching Halos-lift architecture
@@ -240,9 +240,11 @@ def main() -> None:
     args = parse_args()
     device = torch.device(args.device)
 
-    print(f"\n[profile] Halos-lift  component={args.component}  device={device}  "
-          f"batch={args.batch_size}  n_cams={args.n_cams}  "
-          f"bev={args.bev_h}x{args.bev_w}  depth_bins={args.depth_bins}")
+    logger.info(
+        "[profile] Halos-lift  component={}  device={}  batch={}  n_cams={}  bev={}x{}  "
+        "depth_bins={}", args.component, device, args.batch_size, args.n_cams, args.bev_h,
+        args.bev_w, args.depth_bins,
+    )
 
     model, dummy = _BUILDERS[args.component](args)
     model = model.to(device).eval()
@@ -266,6 +268,8 @@ def main() -> None:
         _fwd()
 
     report = profiler.report()
+    # The profile tables are this command's output (meant for the terminal or a redirect), so
+    # they go to stdout; status messages go through loguru.
     print("\n" + report.summary_table(top_k=args.top, sort_by=args.sort))
 
     if args.torch_profiler:
@@ -277,10 +281,10 @@ def main() -> None:
         Path(args.json).parent.mkdir(parents=True, exist_ok=True)
         with open(args.json, "w") as f:
             json.dump(report.to_dict(), f, indent=2)
-        print(f"[profile] JSON → {args.json}")
+        logger.info("[profile] JSON → {}", args.json)
 
     if args.trace:
-        print(f"[profile] Chrome trace → {args.trace}")
+        logger.info("[profile] Chrome trace → {}", args.trace)
 
 
 if __name__ == "__main__":

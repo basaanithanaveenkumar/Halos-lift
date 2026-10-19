@@ -3,6 +3,7 @@
 python examples/quickstart.py --lifter bevformer --steps 200
 """
 
+# Examples print their results on purpose: the output is what the reader runs them to see.
 import argparse
 
 from lifting import LIFTERS, GridSpec, build_bev_model

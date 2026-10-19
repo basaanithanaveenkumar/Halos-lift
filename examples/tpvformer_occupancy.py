@@ -3,6 +3,7 @@
 python examples/tpvformer_occupancy.py --steps 200
 """
 
+# Examples print their results on purpose: the output is what the reader runs them to see.
 import argparse
 
 import torch

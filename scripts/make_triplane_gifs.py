@@ -9,6 +9,8 @@ from __future__ import annotations
 import argparse
 import os
 
+from loguru import logger
+
 
 def main() -> None:
     from lifting.triplane.animation import STORYBOARDS, render_all
@@ -22,7 +24,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     for name, path in render_all(args.out, args.only).items():
-        print(f"{name:12s} -> {path}  ({os.path.getsize(path) / 1024:.0f} KB)")
+        logger.info("{:12s} -> {}  ({:.0f} KB)", name, path, os.path.getsize(path) / 1024)
 
 
 if __name__ == "__main__":
