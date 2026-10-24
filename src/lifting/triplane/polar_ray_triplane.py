@@ -55,7 +55,9 @@ class PolarRayTriplaneLifter(BaseTriplaneLifter):
             grid, in_channels, in_channels, depth_bins, num_layers, num_heads, level
         )
         self.core.output = nn.Identity()  # BEV output head replaced by the plane compressors
-        self.to_planes = VoxelToTriplane(2 * in_channels, grid, out_channels)
+        #: Channels of the voxel volume :meth:`lift_voxels` returns (``VoxelVolumeSource``).
+        self.voxel_channels = 2 * in_channels
+        self.to_planes = VoxelToTriplane(self.voxel_channels, grid, out_channels)
 
     @property
     def level(self) -> int:

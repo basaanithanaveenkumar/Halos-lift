@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from torch import nn
+
 from lifting.decoders import BEVDecoder, SegmentationHead
 from lifting.encoders import ImageEncoder
 from lifting.geometry import GridSpec
 from lifting.lifters.tpvformer.plane_aux_head import PlaneAuxHead
 from lifting.lifters.tpvformer.tpv_aggregator import TPVAggregator
+from lifting.lifters.tpvformer.tpv_planes import PLANE_NAMES
 from lifting.models.bev_segmentation_model import BEVSegmentationModel
 
 # Reuse the BEV factory's context helpers so BEV and TPV lifters are sized identically.
@@ -66,7 +69,14 @@ def build_triplane_model(
     c = encoder.out_channels
     lift = build_triplane_lifter(lifter, grid, c, image_size, num_cameras, encoder, **lifter_kwargs)
     aggregator = TPVAggregator(grid, c, num_classes, scale=scale)
-    heads = [PlaneAuxHead(c, num_classes) for _ in range(3)] if aux_heads else None
+    heads = None
+    if aux_heads:
+        # Parameter-free placeholders for planes the lifter does not produce (e.g. ``yz`` of
+        # ``bev_side``), so no head sits outside the gradient path.
+        heads = [
+            PlaneAuxHead(c, num_classes) if name in lift.planes else nn.Identity()
+            for name in PLANE_NAMES
+        ]
     return TriplaneOccupancyModel(encoder, lift, aggregator, heads)
 
 

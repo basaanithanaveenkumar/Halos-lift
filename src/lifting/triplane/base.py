@@ -5,13 +5,13 @@ from __future__ import annotations
 import inspect
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, ClassVar
 
 from torch import Tensor
 
 from lifting.geometry import Cameras, GridSpec
 from lifting.lifters.base import BaseLifter
-from lifting.lifters.tpvformer.tpv_planes import TPVPlanes
+from lifting.lifters.tpvformer.tpv_planes import PLANE_NAMES, TPVPlanes
 from lifting.registry import Registry
 from lifting.triplane.triplane_bev_head import TriplaneBEVHead
 
@@ -30,6 +30,9 @@ class BaseTriplaneLifter(BaseLifter):
 
     so it can also feed :class:`TPVAggregator` for 3D occupancy and point queries.
 
+    :attr:`planes` names the planes a lifter produces. Most produce all three; two-plane
+    lifters (``bev_side``) produce ``("xy", "xz")`` and return ``TPVPlanes(yz=None)``.
+
     Design decisions:
 
     * The BEV output is derived from the planes (``planes -> voxels -> height compression``)
@@ -43,6 +46,9 @@ class BaseTriplaneLifter(BaseLifter):
         out_channels: channels of every plane and of the BEV map.
     """
 
+    #: Planes this lifter produces, in canonical order.
+    planes: ClassVar[tuple[str, ...]] = PLANE_NAMES
+
     def __init__(self, grid: GridSpec, in_channels: int, out_channels: int) -> None:
         super().__init__(grid, in_channels, out_channels)
         self.bev_head = TriplaneBEVHead(out_channels, grid.resolution[2], out_channels)
@@ -52,7 +58,7 @@ class BaseTriplaneLifter(BaseLifter):
         """Lift ``features`` (``(B, N, C, H_l, W_l)`` per level, fine -> coarse) to planes."""
 
     def forward(self, features: Sequence[Tensor], cameras: Cameras) -> Tensor:
-        """``(B, out_channels, X, Y)`` BEV map computed from the three planes."""
+        """``(B, out_channels, X, Y)`` BEV map computed from the planes."""
         return self.bev_head(self.lift_planes(features, cameras))
 
     @classmethod

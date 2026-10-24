@@ -92,6 +92,20 @@ class PlanePanel:
                 self.theme.rgba(self.theme.planes[plane], alpha),
             )
 
+    def drop(self, canvas: Canvas, plane: int, label: str = "not computed") -> None:
+        """Grey out a plane the technique does not produce and cross it through."""
+        x0, y0, x1, y1 = self._boxes()[plane]
+        canvas.rect((x0, y0, x1, y1), self.theme.rgba(self.theme.background, 0.85))
+        dim = self.theme.rgba(self.theme.muted, 0.7)
+        canvas.line([(x0, y0), (x1, y1)], dim, 1)
+        canvas.line([(x0, y1), (x1, y0)], dim, 1)
+        canvas.text(((x0 + x1) / 2, (y0 + y1) / 2), label, 11, self.theme.muted, anchor="mm")
+
+    def center(self, plane: int) -> tuple[float, float]:
+        """Pixel centre of a plane's box."""
+        x0, y0, x1, y1 = self._boxes()[plane]
+        return (x0 + x1) / 2, (y0 + y1) / 2
+
     def highlight(self, canvas: Canvas, plane: int, a: int, b: int) -> None:
         """Highlight cell ``(a, b)`` of one plane."""
         canvas.rect(self.cell_box(plane, a, b), None, self.theme.ray, 2)

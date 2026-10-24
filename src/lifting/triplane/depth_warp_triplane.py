@@ -46,6 +46,8 @@ class DepthWarpTriplaneLifter(BaseTriplaneLifter):
             grid, in_channels, in_channels, depth_bins, ctx, temperature, level
         )
         self.core.compressor = nn.Identity()  # replaced by the plane compressors
+        #: Channels of the voxel volume :meth:`lift_voxels` returns (``VoxelVolumeSource``).
+        self.voxel_channels = ctx
         self.to_planes = VoxelToTriplane(ctx, grid, out_channels)
 
     @property

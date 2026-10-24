@@ -103,10 +103,26 @@ class PlanePlotter:
         self, planes: TPVPlanes, title: str = "feature planes (joint PCA → RGB)", index: int = 0
     ) -> None:
         """Show sample ``index`` of a ``TPVPlanes`` as three RGB images."""
-        tensors = [p[index].detach().cpu().float() for p in (planes.xy, planes.xz, planes.yz)]
+        present = [p for p in (planes.xy, planes.xz, planes.yz) if p is not None]
+        images = iter(self._pca_rgb([p[index].detach().cpu().float() for p in present]))
         fig, axes = self._figure(title, 1)
-        for plane, (ax, img) in enumerate(zip(axes[0], self._pca_rgb(tensors), strict=True)):
-            ax.imshow(self.oriented(plane, img), interpolation="nearest")
+        for plane, (ax, tensor) in enumerate(
+            zip(axes[0], (planes.xy, planes.xz, planes.yz), strict=True)
+        ):
+            if tensor is None:  # a two-plane TPV (bev_side) has no front plane
+                ax.set_facecolor("#f2f2f2")
+                ax.text(
+                    0.5,
+                    0.5,
+                    "not computed",
+                    ha="center",
+                    va="center",
+                    color="#888",
+                    fontsize=9,
+                    transform=ax.transAxes,
+                )
+            else:
+                ax.imshow(self.oriented(plane, next(images)), interpolation="nearest")
             self._decorate(ax, PLANE_TITLES[plane])
         plt.show()
 

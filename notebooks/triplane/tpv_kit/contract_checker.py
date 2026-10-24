@@ -15,9 +15,10 @@ from lifting.triplane import BaseTriplaneLifter
 class TriplaneContractChecker:
     """Runs the five properties every triplane lifter promises and prints a pass/fail table.
 
-    1. ``lift_planes`` returns ``xy (X, Y)``, ``xz (X, Z)``, ``yz (Y, Z)`` with ``out_channels``.
+    1. ``lift_planes`` returns ``xy (X, Y)``, ``xz (X, Z)`` and - unless the lifter is a two-plane
+       one (``lifter.planes``) - ``yz (Y, Z)``, all with ``out_channels``.
     2. ``forward`` (the BEV path) equals ``bev_head(lift_planes(...))`` - BEV is read off the planes.
-    3. The voxel feature is the TPVFormer sum ``f(x, y, z) = xy(x, y) + xz(x, z) + yz(y, z)``.
+    3. The voxel feature is the TPVFormer sum ``f(x, y, z) = xy(x, y) + xz(x, z) [+ yz(y, z)]``.
     4. Gradients reach the image features (the lifter is trainable end to end).
     5. The wrapped BEV lifter (``lifter.core``) is the *unchanged* class from ``LIFTERS``.
 
@@ -44,9 +45,14 @@ class TriplaneContractChecker:
         nx, ny, nz = self.lifter.grid.resolution
         c = self.lifter.out_channels
         b = self.features[0].shape[0]
-        expected = [(b, c, nx, ny), (b, c, nx, nz), (b, c, ny, nz)]
-        got = [tuple(p.shape) for p in (planes.xy, planes.xz, planes.yz)]
-        self._record("plane shapes", got == expected, f"xy{got[0]} xz{got[1]} yz{got[2]}")
+        shapes = {"xy": (b, c, nx, ny), "xz": (b, c, nx, nz), "yz": (b, c, ny, nz)}
+        expected = [shapes[name] for name in self.lifter.planes]
+        got = [tuple(p.shape) for p in planes.tensors()]
+        detail = " ".join(f"{n}{g}" for n, g in zip(planes.names, got, strict=True))
+        if not planes.has_front:
+            detail += " (no yz: two-plane TPV)"
+        ok = got == expected and planes.names == tuple(self.lifter.planes)
+        self._record("plane shapes", ok, detail)
 
     def check_bev_from_planes(self) -> None:
         with torch.no_grad():
@@ -62,16 +68,17 @@ class TriplaneContractChecker:
             planes = self.lifter.lift_planes(self.features, self.cameras)
         vox = planes.to_voxels()
         i, j, k = (s // 2 for s in self.lifter.grid.resolution)
-        by_hand = planes.xy[..., i, j] + planes.xz[..., i, k] + planes.yz[..., j, k]
+        by_hand = planes.xy[..., i, j] + planes.xz[..., i, k]
+        if planes.has_front:
+            by_hand = by_hand + planes.yz[..., j, k]
         err = (vox[..., i, j, k] - by_hand).abs().max().item()
-        self._record("f = xy + xz + yz", err < 1e-5, f"voxel ({i},{j},{k}) max |diff| = {err:.1e}")
+        name = "f = xy + xz + yz" if planes.has_front else "f = xy + xz"
+        self._record(name, err < 1e-5, f"voxel ({i},{j},{k}) max |diff| = {err:.1e}")
 
     def check_gradients(self) -> None:
         feats = [f.clone().requires_grad_(True) for f in self.features]
         planes = self.lifter.lift_planes(feats, self.cameras)
-        (
-            planes.xy.square().mean() + planes.xz.square().mean() + planes.yz.square().mean()
-        ).backward()
+        sum(p.square().mean() for p in planes.tensors()).backward()
         reached = sum(f.grad is not None and f.grad.abs().sum().item() > 0 for f in feats)
         self.lifter.zero_grad(set_to_none=True)
         self._record(
@@ -81,6 +88,21 @@ class TriplaneContractChecker:
         )
 
     def check_reuse(self) -> None:
+        volume = getattr(self.lifter, "volume", None)
+        if volume is not None:  # bev_side: reuses another triplane lifter's voxel volume
+            from lifting.triplane import TRIPLANE_LIFTERS
+
+            registered = [
+                n for n in TRIPLANE_LIFTERS.names() if type(volume) is TRIPLANE_LIFTERS.get(n)
+            ]
+            self._record(
+                "reuses a voxel volume",
+                bool(registered),
+                f"volume = {type(volume).__name__} = TRIPLANE_LIFTERS[{registered[0]!r}]"
+                if registered
+                else type(volume).__name__,
+            )
+            return
         core = getattr(self.lifter, "core", None)
         if core is None:
             self._record(

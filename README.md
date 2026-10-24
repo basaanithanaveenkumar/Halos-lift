@@ -149,6 +149,9 @@ The ops are checked against explicit loop implementations and with `torch.autogr
 Every lifter also has a **triplane** version in `lifting.triplane`: it returns three orthogonal planes
 `xy (B,C,X,Y)` (= BEV), `xz (B,C,X,Z)`, `yz (B,C,Y,Z)` and decodes any 3D point as
 `f(x,y,z) = xy(x,y) + xz(x,z) + yz(y,z)`. Height is kept at 13.8× fewer cells than voxels (`200×200×16`).
+The **`bev_side`** variant keeps only `xy` + `xz` (no front view): both planes are pooled from **one** reused
+perspective voxel volume and mixed along the shared `x` axis - 42k lifter parameters, mIoU 0.345 on the toy
+occupancy task vs 0.334 for `tpvformer` ([docs](docs/triplane.md#10-bev--side-no-front-view---bev_side--bevsidetriplanelifter)).
 **The triplane module does not modify the BEV lifters** (the only edits to existing code are the Alpamayo bug fixes in [`docs/triplane.md`](docs/triplane.md#fixed-issues)): each triplane lifter wraps the BEV lifter, and is itself still a
 `BaseLifter` (its `forward()` returns BEV read off the planes), so it works with the existing models, trainer and
 verifier. Full documentation: [`docs/triplane.md`](docs/triplane.md) · notebooks: [`notebooks/triplane/`](notebooks/triplane/).
@@ -190,6 +193,7 @@ flowchart TB
     T7["AlpamayoTriplaneAdapter"]:::learned
     T8["MLPViewTriplaneLifter"]:::learned
     T9["BEVLifterTriplaneAdapter"]:::learned
+    T10["BEVSideTriplaneLifter<br/>xy + xz only"]:::learned
   end
   L1 -. "core (composition)" .-> T1
   L2 -. core .-> T2
@@ -198,6 +202,7 @@ flowchart TB
   L6 -. core .-> T6
   L7 -. core .-> T7
   EXIST -. "any entry" .-> T9
+  T1 -. "lift_voxels (shared volume)" .-> T10
   BASE["BaseTriplaneLifter(BaseLifter)<br/>lift_planes() → TPVPlanes<br/>forward() → BEV from planes"]:::geo
   NEW --> BASE
   BASE --> OCC["build_triplane_model → TriplaneOccupancyModel<br/>3D occupancy + point queries"]:::out
@@ -221,6 +226,7 @@ flowchart TB
 | `alpamayo` | `AlpamayoTriplaneAdapter` | TPVFormer layers whose plane cells follow a Mip-NeRF 360 non-linear parametrisation - dense near the ego, coarse far away - and whose planes are patchified into a fixed-length token sequence for a VLA policy. |
 | `mlp_view` | `MLPViewTriplaneLifter` | One fully connected layer per (camera, plane) maps the image cells straight to plane cells; calibration is ignored - the control that proves every other triplane lifter really uses the cameras. |
 | `bev_adapter` | `BEVLifterTriplaneAdapter` | Run any registered BEV lifter unchanged, then expand its BEV map into three planes with the learned BEVToTPV: xy from the map, xz / yz from pooled columns expanded along height. |
+| `bev_side` | `BEVSideTriplaneLifter` | **Two planes, no front view:** read the cameras once into a voxel volume (any of `simple_bev` / `depth_warp` / `lift_splat` / `tiim`), pool that same volume over height (xy) and over the lateral axis (xz), mix the planes along their shared x axis. |
 
 **Occupancy results** (150 CPU steps, `16×16×4` grid, randomly rotated 4-camera rig; from
 `00_triplane_overview.ipynb`). Every geometric triplane lifter learns and collapses when the extrinsics are rotated
@@ -237,6 +243,7 @@ by 90°; the geometry-free control cannot localise objects:
 | `tpvformer` | 236k | 0.017 | **0.324** | 0.030 | 5.5 s | ✅ |
 | `bevformer` | 249k | 0.008 | **0.295** | 0.030 | 6.5 s | ✅ |
 | `mlp_view (control)` | 318k | 0.013 | **0.038** | 0.038 | 3.4 s | — (control) |
+| `bev_side` (xy + xz only; seed 0, run separately) | 212k | 0.000 | **0.331** | 0.031 | 8.1 s | ✅ |
 
 ### Step-by-step animations and diagrams
 
@@ -736,6 +743,41 @@ flowchart LR
   TPV --> AGG["TPVAggregator<br/>voxel logits (B,K,X,Y,Z)<br/>+ point logits (B,K,P)"]:::learned
   classDef data fill:#fff7e6,stroke:#d48806,color:#222
   classDef geo fill:#eaf2fb,stroke:#1f77b4,color:#222
+  classDef learned fill:#f1e6f8,stroke:#8e44ad,color:#222
+  classDef reused fill:#eaf7ea,stroke:#2e8b57,color:#222
+  classDef out fill:#fdecea,stroke:#c0392b,color:#222
+```
+
+</details>
+
+#### 10. BEV + side, no front view - `bev_side`
+
+> Read the cameras once into a voxel volume, pool that same volume over height (BEV) and over the lateral axis (side), and mix the two planes along the forward axis they share. The `yz` front plane is never built.
+
+![bev_side triplane lifting](assets/triplane/bev_side.gif)
+
+<details>
+<summary><b>How it lifts + detailed diagram</b> · notebook <code>notebooks/triplane/10_bev_side_triplane.ipynb</code></summary>
+
+`TPVPlanes(xy, xz, yz=None)`: the voxel feature is `f(x, y, z) = xy(x, y) + xz(x, z)`, so every voxel is still
+addressed on all three axes with `X·Y + X·Z` cells. The perspective features are sampled **once** - a
+`VoxelVolumeSource` (`simple_bev` by default) returns the `(B, C, X, Y, Z)` volume - and both planes are pooled from
+that same volume by `AxisAttentionPool` (content-dependent attention over the collapsed axis, with position
+embeddings), then coupled by `BEVSideMixer` (row-wise cross-attention along `x`). Over 2 seeds it reaches mIoU
+0.345 with a 42k-parameter lifter (`tpvformer` 0.334 with 61k, `simple_bev` 0.371 with 335k);
+see [`docs/triplane.md`](docs/triplane.md#10-bev--side-no-front-view---bev_side--bevsidetriplanelifter).
+
+```mermaid
+flowchart LR
+  ENC["ImageEncoder"]:::learned --> LV["volume lifter.lift_voxels<br/>(simple_bev / depth_warp / lift_splat / tiim)"]:::reused
+  CAM["Cameras"]:::data --> LV
+  LV --> V["perspective volume (B, C, X, Y, Z)<br/>read ONCE"]:::reused
+  V --> PH["AxisAttentionPool over Z"]:::learned --> XY["xy (B, C, X, Y)"]:::out
+  V --> PL["AxisAttentionPool over Y"]:::learned --> XZ["xz (B, C, X, Z)"]:::out
+  XY <--> MIX["BEVSideMixer<br/>along shared x"]:::learned
+  XZ <--> MIX
+  MIX --> TPV["TPVPlanes(xy, xz, yz=None)"]:::out
+  classDef data fill:#fff7e6,stroke:#d48806,color:#222
   classDef learned fill:#f1e6f8,stroke:#8e44ad,color:#222
   classDef reused fill:#eaf7ea,stroke:#2e8b57,color:#222
   classDef out fill:#fdecea,stroke:#c0392b,color:#222

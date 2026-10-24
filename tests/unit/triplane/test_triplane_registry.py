@@ -17,7 +17,7 @@ BEV_NAMES = {
 
 def test_every_bev_lifter_has_a_triplane_counterpart() -> None:
     assert set(LIFTERS.names()) <= set(TRIPLANE_LIFTERS.names())
-    assert set(TRIPLANE_LIFTERS.names()) == set(LIFTERS.names()) | {"bev_adapter"}
+    assert set(TRIPLANE_LIFTERS.names()) == set(LIFTERS.names()) | {"bev_adapter", "bev_side"}
 
 
 def test_importing_triplane_does_not_touch_bev_registry() -> None:

@@ -48,15 +48,16 @@ class TPVFormer(nn.Module):
         Returns:
             ``planes`` (:class:`TPVPlanes`), ``voxel_logits`` ``(B, K, X, Y, Z)`` and
             optionally ``point_logits`` ``(B, K, P)``, and with ``aux_heads`` the per-plane
-            ``aux_logits`` ``((B, K, X, Y), (B, K, X, Z), (B, K, Y, Z))``.
+            ``aux_logits`` ``((B, K, X, Y), (B, K, X, Z), (B, K, Y, Z) or None)``.
         """
         b, n = images.shape[:2]
         feats = [f.view(b, n, *f.shape[1:]) for f in self.encoder(images.flatten(0, 1))]
         planes = self.lifter.lift_planes(feats, cameras)
         out = {"planes": planes, **self.aggregator(planes, points)}
         if self.aux_heads is not None:
+            # A two-plane TPV (no front plane) yields ``None`` in the ``yz`` slot.
             out["aux_logits"] = tuple(
-                head(plane)
+                None if plane is None else head(plane)
                 for head, plane in zip(
                     self.aux_heads, (planes.xy, planes.xz, planes.yz), strict=True
                 )

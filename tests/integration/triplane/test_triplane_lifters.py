@@ -40,13 +40,17 @@ def test_planes_bev_shapes_and_gradients(name: str, grid: GridSpec, cameras: Cam
     nx, ny, nz = grid.resolution
     b = cameras.batch_size
     assert isinstance(planes, TPVPlanes)
+    assert planes.names == lifter.planes
     assert planes.xy.shape == (b, C, nx, ny)
     assert planes.xz.shape == (b, C, nx, nz)
-    assert planes.yz.shape == (b, C, ny, nz)
+    if "yz" in lifter.planes:
+        assert planes.yz.shape == (b, C, ny, nz)
+    else:
+        assert planes.yz is None
     assert planes.resolution == grid.resolution
-    for p in (planes.xy, planes.xz, planes.yz):
+    for p in planes.tensors():
         assert torch.isfinite(p).all()
-    loss = sum(p.square().mean() for p in (planes.xy, planes.xz, planes.yz))
+    loss = sum(p.square().mean() for p in planes.tensors())
     loss.backward()
     assert sum(f.grad.abs().sum() for f in feats if f.grad is not None) > 0
 
@@ -74,7 +78,7 @@ def test_geometric_triplane_lifters_depend_on_calibration(
     with torch.no_grad():
         a = lifter.lift_planes(feats, cameras)
         r = lifter.lift_planes(feats, cameras.transformed(rotation_z(90)))
-    for pa, pr in zip((a.xy, a.xz, a.yz), (r.xy, r.xz, r.yz), strict=True):
+    for pa, pr in zip(a.tensors(), r.tensors(), strict=True):
         assert not torch.allclose(pa, pr, atol=1e-3)
 
 

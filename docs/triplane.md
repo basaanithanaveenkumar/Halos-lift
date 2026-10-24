@@ -212,6 +212,7 @@ adapter = TRIPLANE_LIFTERS.build(
 | `alpamayo` | `AlpamayoTriplaneAdapter` | `AlpamayoTriplaneLifter.lift_planes`, `.patchify_planes` | `PlaneProjection`, resampling onto uniform cells |
 | `mlp_view` | `MLPViewTriplaneLifter` | - (geometry-free, mirrors `MLPViewLifter`) | one `Linear(h·w → H_P·W_P)` per (camera, plane) |
 | `bev_adapter` | `BEVLifterTriplaneAdapter` | any `LIFTERS` entry + `BEVToTPV` | - (composition only) |
+| `bev_side` | `BEVSideTriplaneLifter` | `lift_voxels` of `simple_bev` / `depth_warp` / `lift_splat` / `tiim` | two `AxisAttentionPool`s, `BEVSideMixer`; **no `yz` plane** |
 
 ## Techniques
 
@@ -224,6 +225,7 @@ adapter = TRIPLANE_LIFTERS.build(
 7. [Alpamayo (Mip-NeRF 360 triplane)](#7-alpamayo-mip-nerf-360-triplane---alpamayo--alpamayotriplaneadapter)
 8. [MLP view transform (negative control)](#8-mlp-view-transform-negative-control---mlp_view--mlpviewtriplanelifter)
 9. [BEV-lifter adapter (any LIFTERS entry → triplane)](#9-bev-lifter-adapter-any-lifters-entry--triplane---bev_adapter--bevliftertriplaneadapter)
+10. [BEV + side, no front view (two-plane TPV)](#10-bev--side-no-front-view---bev_side--bevsidetriplanelifter)
 
 ### 1. Simple-BEV - `simple_bev` → `SimpleBEVTriplaneLifter`
 
@@ -820,6 +822,106 @@ with $W \in \mathbb{R}^{(C\cdot Z) \times C}$ a `1×1` convolution - the inverse
 | planes | `xy (B,C,X,Y)`, `xz (B,C,X,Z)`, `yz (B,C,Y,Z)` |
 
 
+### 10. BEV + side, no front view - `bev_side` → `BEVSideTriplaneLifter`
+
+*two-plane TPV from reused perspective features* · notebook [`notebooks/triplane/10_bev_side_triplane.ipynb`](../notebooks/triplane/10_bev_side_triplane.ipynb)
+
+> Read the cameras once into a voxel volume, pool that same volume over height (BEV) and over the lateral axis (side),
+> and let the two planes exchange information along the forward axis they share. The `yz` front plane is never built.
+
+![bev_side](../assets/triplane/bev_side.gif)
+
+Two departures from the other techniques:
+
+1. **No front plane.** `lift_planes` returns `TPVPlanes(xy, xz, yz=None)` and `lifter.planes == ("xy", "xz")`.
+   The voxel feature is `f(x, y, z) = xy(x, y) + xz(x, z)`: `x` is read by both planes, `y` by the BEV plane, `z`
+   by the side plane, so every voxel is still addressed on all three axes - only the `(y, z)` coupling that bypasses
+   `x` is gone. The representation shrinks from `X·Y + X·Z + Y·Z` to `X·Y + X·Z` cells.
+2. **The perspective features are sampled once and reused for both planes.** A voxel-volume lifter (`volume=`:
+   `simple_bev` (default), `depth_warp`, `lift_splat` or `tiim` - anything satisfying `VoxelVolumeSource`) turns the
+   camera features into a `(B, C, X, Y, Z)` volume; that is the only camera access. `bevformer` / `tpvformer`
+   instead run one image cross-attention per plane. The source's own plane compressors and BEV head are dropped,
+   so every parameter of the lifter is on the gradient path.
+
+```mermaid
+flowchart LR
+  IMG["N camera images<br/>(B, N, 3, H, W)"]:::data --> ENC["ImageEncoder<br/>pyramid (B, N, C, H_l, W_l)"]:::learned
+  CAM["Cameras<br/>K · cam_to_ego"]:::data
+  subgraph VOL["volume lifter (existing, reused): simple_bev | depth_warp | lift_splat | tiim"]
+    direction TB
+    LV["lift_voxels<br/>project · read · camera mean"]:::reused
+  end
+  ENC --> LV
+  CAM --> LV
+  LV --> V["perspective volume V<br/>(B, C, X, Y, Z)<br/>the ONLY camera access"]:::reused
+  V --> PH["AxisAttentionPool over Z<br/>pool_height"]:::learned
+  V --> PL["AxisAttentionPool over Y<br/>pool_lateral"]:::learned
+  PH --> XY["xy (B, C, X, Y)"]:::out
+  PL --> XZ["xz (B, C, X, Z)"]:::out
+  XY <--> MIX["BEVSideMixer × L<br/>row-wise cross-attention along x"]:::learned
+  XZ <--> MIX
+  MIX --> TPV["TPVPlanes(xy, xz, yz=None)"]:::out
+  TPV --> BEVH["TriplaneBEVHead<br/>f = xy + xz → fold Z → BEV"]:::learned
+  TPV --> AGG["TPVAggregator<br/>voxel + point logits"]:::learned
+  classDef data fill:#fff7e6,stroke:#d48806,color:#222
+  classDef learned fill:#f1e6f8,stroke:#8e44ad,color:#222
+  classDef reused fill:#eaf7ea,stroke:#2e8b57,color:#222
+  classDef out fill:#fdecea,stroke:#c0392b,color:#222
+```
+
+With the shared volume $V$ and learned position embeddings $E$ along the pooled axis:
+
+$$ xy[:, x, y] = W_o \sum_{z} \alpha_{x,y,z}\, W_v\big(V[:, x, y, z] + E^Z_z\big),\qquad
+   \alpha_{x,y,\cdot} = \mathrm{softmax}_z\, w^\top\big(V[:, x, y, \cdot] + E^Z\big) $$
+
+$$ xz[:, x, z] = W'_o \sum_{y} \beta_{x,z,y}\, W'_v\big(V[:, x, y, z] + E^Y_y\big) $$
+
+(per head; `pooling="fold"` swaps the attention for the channel-folding `HeightCompressor` used by `simple_bev`).
+A `BEVSideMixer` layer treats each row `x` as two short sequences - `Y` BEV cells and `Z` side cells - and runs
+cross-attention both ways, then a depthwise-3×3 FFN per plane:
+
+$$ xy_x \leftarrow xy_x + \mathrm{Attn}(xy_x + P^Y,\ xz_x + P^Z,\ xz_x),\qquad
+   xz_x \leftarrow xz_x + \mathrm{Attn}(xz_x + P^Z,\ xy_x + P^Y,\ xy_x) $$
+
+| argument | default | meaning |
+|---|---|---|
+| `volume` | `simple_bev` | triplane lifter whose `lift_voxels` provides the shared volume |
+| `volume_kwargs` | `{}` | its constructor arguments (the build context is forwarded automatically) |
+| `pooling` | `attention` | `attention` (`AxisAttentionPool`) or `fold` (`HeightCompressor`) |
+| `mix_layers` | `2` | `BEVSideMixer` layers (`0` = independent planes) |
+| `num_heads` | `4` | heads of the pools and the mixer |
+
+| tensor | shape |
+|---|---|
+| shared volume `V` | `(B, C, X, Y, Z)` |
+| planes | `xy (B,C,X,Y)`, `xz (B,C,X,Z)`, `yz = None` |
+| BEV / voxel logits | `(B, C, X, Y)` / `(B, K, X, Y, Z)` (decoded from `xy + xz`) |
+
+**Library support for two-plane TPVs.** `TPVPlanes.yz` is optional everywhere: `to_voxels`, `sample_points`,
+`upsample`, `to_tokens` / `from_tokens(names=...)`, `PlaneProjection`, the BEV head and the aggregator use the planes
+that exist; `TPVPlanes.names` / `has_front` / `tensors()` describe them. `BaseTriplaneLifter.planes` declares what a
+lifter produces; `build_triplane_model(..., aux_heads=True)` puts a parameter-free placeholder in the `yz` aux slot,
+`aux_logits[2]` is `None` and `OccupancyTask` skips it.
+
+**Measured** (same protocol as [Results](#results), 2 seeds, mean ± half-range):
+
+| lifter | lifter params | mIoU trained ↑ |
+|---|---|---|
+| `simple_bev` (three planes, folded) | 335k | 0.371 ± 0.004 |
+| `tpvformer` (three planes, one layer) | 61k | 0.334 ± 0.010 |
+| `bevformer` (three independent planes, one layer) | 74k | 0.309 ± 0.014 |
+| **`bev_side`** (default) | **42k** | **0.345 ± 0.014** |
+| `bev_side`, `mix_layers=0` | 5k | 0.359 ± 0.013 |
+| `bev_side`, `pooling="fold"` | 223k | 0.356 ± 0.011 |
+| `bev_side`, `volume="lift_splat"` | 53k | 0.282 ± 0.008 |
+
+On this toy task two planes from one shared volume beat both three-plane attention lifters with fewer parameters,
+and stay within ~0.01-0.03 of the three-plane `simple_bev` that has 8× the lifter parameters. The mixer does not help
+within 150 steps (no-mix 0.359 vs 0.345, inside the seed spread), and attention pooling over a sparse splatted
+`lift_splat` volume underperforms the folding compressor `lift_splat` uses as a three-plane lifter (0.388). All
+variants collapse to ~0.03 with yawed extrinsics, so they read the cameras through the calibration.
+
+
 ## Results
 
 Measured by [`00_triplane_overview.ipynb`](../notebooks/triplane/00_triplane_overview.ipynb): 3D semantic occupancy,
@@ -838,6 +940,7 @@ extrinsic rotated by 90° (images and labels unchanged).
 | `tpvformer` | 236k | 0.017 | **0.324** | 0.030 | 5.5 s | ✅ |
 | `bevformer` | 249k | 0.008 | **0.295** | 0.030 | 6.5 s | ✅ |
 | `mlp_view (control)` | 318k | 0.013 | **0.038** | 0.038 | 3.4 s | — (control) |
+| `bev_side` (two planes, measured separately, seed 0) | 212k | 0.000 | **0.331** | 0.031 | 8.1 s | ✅ |
 
 Every geometric triplane lifter learns and collapses when the calibration is wrong; the geometry-free control cannot
 localise objects at all. Notable comparisons from the technique notebooks:
@@ -886,6 +989,11 @@ class MyTriplaneLifter(BaseTriplaneLifter):
 
 `forward`, `build_triplane_model`, `build_triplane_bev_model`, the trainer and the verifier work immediately. Verify the
 contract with `TriplaneContractChecker(lifter, features, cameras).run()` from `notebooks/triplane/tpv_kit`.
+
+* **Fewer planes.** Set the class attribute `planes = ("xy", "xz")` and return `TPVPlanes(xy, xz)`; everything
+  downstream (BEV head, aggregator, aux heads, occupancy loss, contract checker, storyboard `planes`) follows it.
+* **Lend your volume.** A lifter with `lift_voxels(features, cameras)` and a `voxel_channels` attribute is a
+  `VoxelVolumeSource`, so `bev_side` can reuse it: `TRIPLANE_LIFTERS.build("bev_side", ..., volume="my_triplane")`.
 
 ## Fixed issues
 

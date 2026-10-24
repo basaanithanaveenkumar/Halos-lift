@@ -47,6 +47,8 @@ class Storyboard(ABC):
     name: ClassVar[str]
     title: ClassVar[str]
     reference: ClassVar[str] = ""
+    #: Planes the technique produces (0 = xy, 1 = xz, 2 = yz); missing ones are shown dropped.
+    planes: ClassVar[tuple[int, ...]] = (0, 1, 2)
 
     SIZE = (880, 500)
     CAPTION_BOX = (14, 398, 540, 488)
@@ -90,7 +92,7 @@ class Storyboard(ABC):
         self._header(canvas)
         painter.floor_grid()
         painter.back_walls()
-        for plane in range(3):
+        for plane in self.planes:
             painter.plane_outline(plane, alpha=0.75)
         if step.under is not None:
             step.under(ctx, t)
@@ -99,6 +101,9 @@ class Storyboard(ABC):
         painter.cameras()
         self.camera_images.draw(canvas)
         self.plane_panel.draw(canvas)
+        for plane in range(3):
+            if plane not in self.planes:
+                self.plane_panel.drop(canvas, plane)
         if step.over is not None:
             step.over(ctx, t)
         self._caption(canvas, steps, idx)
@@ -186,12 +191,12 @@ class Storyboard(ABC):
         return Step("Voxel centres", caption, None, over, frames=8, objects_alpha=0.45)
 
     def step_collapse(self, voxels: np.ndarray, title: str, caption: str) -> Step:
-        """Voxel features fold onto the three planes (learned compression of Z, Y and X)."""
+        """Voxel features fold onto the planes (learned compression of Z, Y and X)."""
         labels = self.facts.plane_labels
         occupied = [idx for idx in np.ndindex(*voxels.shape) if voxels[idx] > 0]
 
         def under(ctx: FrameContext, t: float) -> None:
-            for plane in range(3):
+            for plane in self.planes:
                 ctx.painter.plane_cells(plane, labels[plane], alpha=t)
 
         def over(ctx: FrameContext, t: float) -> None:
@@ -201,11 +206,11 @@ class Storyboard(ABC):
             )
             for idx in occupied[::2]:
                 c = self.scene.voxel_center(*idx)
-                for plane in range(3):
+                for plane in self.planes:
                     ctx.painter.ray(
                         c, self.scene.project_to_plane(c, plane), t, self.theme.planes[plane], 0.55
                     )
-            for plane in range(3):
+            for plane in self.planes:
                 ctx.planes.fill(ctx.canvas, plane, labels[plane], order=t)
 
         return Step(title, caption, under, over, frames=10, objects_alpha=0.25)
@@ -222,12 +227,15 @@ class Storyboard(ABC):
         obj = self.scene.objects[0]
         p = (obj.center[0], obj.center[1], obj.size[2] * 0.6)
 
+        terms = ("xy(x,y)", "xz(x,z)", "yz(y,z)")
+        formula = "f(P) = " + " + ".join(terms[plane] for plane in self.planes)
+
         def under(ctx: FrameContext, t: float) -> None:
-            for plane in range(3):
+            for plane in self.planes:
                 ctx.painter.plane_cells(plane, labels[plane])
 
         def over(ctx: FrameContext, t: float) -> None:
-            for plane in range(3):
+            for plane in self.planes:
                 ctx.planes.fill(ctx.canvas, plane, labels[plane])
                 shadow = self.scene.project_to_plane(p, plane)
                 ctx.painter.dashed(p, shadow, self.theme.planes[plane], min(1.0, 2 * t))
@@ -240,7 +248,7 @@ class Storyboard(ABC):
                 self.theme.panel_edge,
                 radius=6,
             )
-            ctx.canvas.text((32, 72), "f(P) = xy(x,y) + xz(x,z) + yz(y,z)", 13, self.theme.text)
+            ctx.canvas.text((32, 72), formula, 13, self.theme.text)
             ctx.canvas.text((32, 92), "BEV = HeightCompressor(planes)", 12, self.theme.plane_xy)
 
         text = caption or (

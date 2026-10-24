@@ -42,7 +42,9 @@ class LiftSplatTriplaneLifter(BaseTriplaneLifter):
             grid, in_channels, in_channels, depth_bins, context_channels, level
         )
         self.core.compressor = nn.Identity()  # replaced by the plane compressors
-        self.to_planes = VoxelToTriplane(self.core.context_channels, grid, out_channels)
+        #: Channels of the voxel volume :meth:`lift_voxels` returns (``VoxelVolumeSource``).
+        self.voxel_channels = self.core.context_channels
+        self.to_planes = VoxelToTriplane(self.voxel_channels, grid, out_channels)
 
     @property
     def level(self) -> int:

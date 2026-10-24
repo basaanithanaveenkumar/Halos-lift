@@ -36,7 +36,12 @@ def test_occupancy_model_outputs(name: str, batch: SceneBatch, grid: GridSpec) -
         out["point_logits"], out["voxel_logits"][:, :, 2:4, 5:7, 1:3].reshape(2, 3, -1), atol=1e-4
     )
     nx, ny, nz = grid.resolution
-    assert [a.shape[-2:] for a in out["aux_logits"]] == [(nx, ny), (nx, nz), (ny, nz)]
+    shapes = [(nx, ny), (nx, nz), (ny, nz)]
+    expected = [
+        s if p in model.lifter.planes else None
+        for p, s in zip(("xy", "xz", "yz"), shapes, strict=False)
+    ]
+    assert [None if a is None else tuple(a.shape[-2:]) for a in out["aux_logits"]] == expected
 
 
 def test_occupancy_model_rejects_bev_lifter(grid: GridSpec) -> None:
@@ -61,7 +66,7 @@ def test_occupancy_training_reduces_loss(name: str, batch: SceneBatch, grid: Gri
     assert all(p.grad is None for p in model.lifter.bev_head.parameters())
 
 
-@pytest.mark.parametrize("name", ["simple_bev", "tiim", "bevformer"])
+@pytest.mark.parametrize("name", ["simple_bev", "tiim", "bevformer", "bev_side"])
 def test_bev_model_training_reduces_loss(name: str, batch: SceneBatch, grid: GridSpec) -> None:
     torch.manual_seed(0)
     model = build_triplane_bev_model(name, grid, 3, IMAGE, channels=16, **small(name))

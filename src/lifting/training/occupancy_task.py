@@ -47,7 +47,7 @@ class OccupancyTask(Task):
         return loss
 
     def plane_loss(self, outputs: dict, batch: SceneBatch) -> Tensor:
-        """Mean cross-entropy of the ``xy`` / ``xz`` / ``yz`` plane logits."""
+        """Mean cross-entropy of the plane logits (a missing ``yz`` plane is skipped)."""
         if "aux_logits" not in outputs:
             raise InvalidConfigError("aux_weight > 0 needs a model built with aux_heads=True")
         occupancy = batch.occupancy  # (B, X, Y, Z)
@@ -56,6 +56,7 @@ class OccupancyTask(Task):
         losses = [
             F.cross_entropy(logits, target, weight=weight)
             for logits, target in zip(outputs["aux_logits"], targets, strict=True)
+            if logits is not None
         ]
         return torch.stack(losses).mean()
 

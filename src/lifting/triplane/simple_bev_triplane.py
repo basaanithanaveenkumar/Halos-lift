@@ -31,6 +31,8 @@ class SimpleBEVTriplaneLifter(BaseTriplaneLifter):
         # The core's BEV compressor is replaced by the three plane compressors below; dropping
         # it avoids parameters that never receive a gradient.
         self.core.compressor = nn.Identity()
+        #: Channels of the voxel volume :meth:`lift_voxels` returns (``VoxelVolumeSource``).
+        self.voxel_channels = in_channels
         self.to_planes = VoxelToTriplane(in_channels, grid, out_channels)
 
     @property
